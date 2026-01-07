@@ -1,9 +1,10 @@
+from pathlib import Path
+
 import gymnasium as gym
 import numpy as np
 import pybullet as p
 import pybullet_data as pd
 from gymnasium import spaces
-from pathlib import Path
 
 
 class RacingEnv(gym.Env):
@@ -38,13 +39,15 @@ class RacingEnv(gym.Env):
         self.max_brake = 0
         self.max_steer = 1.0
 
+        self._setup_env()
+
     def _setup_env(self):
 
         current_path = Path(__file__).resolve()
         circuit_data_path = current_path.parent.parent / "circuitData"
 
-        track_file_path = circuit_data_path / self.track_name / ".obj"
-        runoff_file_path = circuit_data_path / self.runoff_name / ".obj"
+        track_file_path = str(circuit_data_path / (self.track_name + ".obj"))
+        runoff_file_path = str(circuit_data_path / (self.runoff_name + ".obj"))
 
         self.close()
         self.engine_id = p.connect(
