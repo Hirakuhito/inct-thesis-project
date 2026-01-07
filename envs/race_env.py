@@ -4,6 +4,7 @@ import gymnasium as gym
 import numpy as np
 import pybullet as p
 import pybullet_data as pd
+from envs.car import Car
 from gymnasium import spaces
 
 
@@ -42,7 +43,6 @@ class RacingEnv(gym.Env):
         self._setup_env()
 
     def _setup_env(self):
-
         current_path = Path(__file__).resolve()
         circuit_data_path = current_path.parent.parent / "circuitData"
 
@@ -107,6 +107,8 @@ class RacingEnv(gym.Env):
             basePosition=base_pos,
             baseOrientation=base_orient
         )
+
+        car = Car(base_pos, base_orient)
 
     def reset(self, seed=None, options=None):
         super().reset(seed=seed)
