@@ -1,0 +1,3 @@
+[submodule "formular"]
+	path = formular
+	url = https://github.com/Hirakuhito/formular.git
