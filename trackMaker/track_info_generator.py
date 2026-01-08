@@ -20,7 +20,8 @@ def gen_center_point(length, radius, segments=51, pos=np.array([0, 0])):
     """
 
     if length < 0 or radius < 0 or segments < 0:
-        raise ValueError("'length', 'radius' and 'segments' must be positive number.")
+        raise ValueError("'length', 'radius' and 'segments' \
+                         must be positive number.")
 
     if not isinstance(segments, int):
         raise TypeError("Segments must be integer.")
@@ -30,12 +31,17 @@ def gen_center_point(length, radius, segments=51, pos=np.array([0, 0])):
     all_points = []
 
     # * offset
-    corner_offset = length / 2 #* center of cerner section [0, coner_offset]
+    corner_offset = length / 2  # * center of cerner section [0, coner_offset]
 
     # *============== sections ======================
     # * left straight
     if length != 0:
-        y_straight = np.linspace(-corner_offset, corner_offset, segments, endpoint=False)
+        y_straight = np.linspace(
+            -corner_offset,
+            corner_offset,
+            segments,
+            endpoint=False
+        )
         x_straight = np.full_like(y_straight, -radius)
         left_straight = np.stack((x_straight, y_straight), axis=1)
 
@@ -53,7 +59,12 @@ def gen_center_point(length, radius, segments=51, pos=np.array([0, 0])):
 
     # * right straight
     if length != 0:
-        y_straight = np.linspace(corner_offset, -corner_offset, segments, endpoint=False)
+        y_straight = np.linspace(
+            corner_offset,
+            -corner_offset,
+            segments,
+            endpoint=False
+        )
         x_straight = np.full_like(y_straight, radius)
         right_straight = np.stack((x_straight, y_straight), axis=1)
 
@@ -96,7 +107,8 @@ def gen_mesh_data(points, width, radius, in_out):
 
     if width > width_limit:
         load_width = width_limit
-        print(f"Fix : Because 'width = {width}' exceeded the limit ({width_limit}), 'width = {width_limit}' was adjusted")
+        print(f"Fix : Because 'width = {width}' exceeded the limit \
+              ({width_limit}), 'width = {width_limit}' was adjusted")
     # *============= Caluculate vector ===================
     n = len(points)
 
@@ -129,7 +141,12 @@ def gen_mesh_data(points, width, radius, in_out):
         out_right_points = points - runoff_offset
         out_left_points = points - offset_vector
 
-        mesh_points = np.hstack((in_left_points, in_right_points, out_left_points, out_right_points))
+        mesh_points = np.hstack((
+            in_left_points,
+            in_right_points,
+            out_left_points,
+            out_right_points
+        ))
 
     return mesh_points, tangent_norm
 
@@ -238,8 +255,8 @@ def export_obj(mesh_points, filename, in_out):
 
     current_dir = Path(__file__).resolve()
     name_obj = filename + '.obj'
-    output_dir = str(current_dir.parent.parent / "circuitData")
-    output_path = output_dir / name_obj
+    output_dir = current_dir.parent.parent / "circuitData/"
+    output_path = str(output_dir / name_obj)
 
     try:
         os.makedirs(output_dir, exist_ok=True)

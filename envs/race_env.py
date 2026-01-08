@@ -4,12 +4,13 @@ import gymnasium as gym
 import numpy as np
 import pybullet as p
 import pybullet_data as pd
-from envs.car import Car
 from gymnasium import spaces
+
+from envs.car import Car
 
 
 class RacingEnv(gym.Env):
-    def __init__(self, render=False):
+    def __init__(self,  car_pos, car_orn, render=False):
         super().__init__()
 
         self.render = render
@@ -33,16 +34,18 @@ class RacingEnv(gym.Env):
         self.track_name = "track"
         self.runoff_name = "runoff"
 
+        # *============ params ============
         self.max_steps = 10_000
         self.step_count = 0
 
         self.max_torque = 0
         self.max_brake = 0
         self.max_steer = 1.0
+        # *================================
 
-        self._setup_env()
+        self._setup_env(car_pos, car_orn)
 
-    def _setup_env(self):
+    def _setup_env(self, car_pos, car_orn):
         current_path = Path(__file__).resolve()
         circuit_data_path = current_path.parent.parent / "circuitData"
 
@@ -51,7 +54,8 @@ class RacingEnv(gym.Env):
 
         self.close()
         self.engine_id = p.connect(
-            p.GUI if self.render else p.DIRECT
+            p.GUI if self.render else p.DIRECT,
+            options="--stderr_logging_level=0"
         )
 
         p.setAdditionalSearchPath(pd.getDataPath())
@@ -59,8 +63,8 @@ class RacingEnv(gym.Env):
         p.setGravity(0, 0, -9.8)
 
         # load track and car
-        base_pos = [0, 0, 0]
-        base_orient = p.getQuaternionFromEuler([0, 0, 0])
+        track_base_pos = [0, 0, 0]
+        track_base_orient = p.getQuaternionFromEuler([0, 0, 0])
 
         track_vis_id = p.createVisualShape(
             shapeType=p.GEOM_MESH,
@@ -81,8 +85,8 @@ class RacingEnv(gym.Env):
             baseMass=0,
             baseCollisionShapeIndex=track_coll_id,
             baseVisualShapeIndex=track_vis_id,
-            basePosition=base_pos,
-            baseOrientation=base_orient
+            basePosition=track_base_pos,
+            baseOrientation=track_base_orient
         )
 
         runoff_vis_id = p.createVisualShape(
@@ -104,11 +108,11 @@ class RacingEnv(gym.Env):
             baseMass=0,
             baseCollisionShapeIndex=runoff_coll_id,
             baseVisualShapeIndex=runoff_vis_id,
-            basePosition=base_pos,
-            baseOrientation=base_orient
+            basePosition=track_base_pos,
+            baseOrientation=track_base_orient
         )
 
-        car = Car(base_pos, base_orient)
+        car = Car(car_pos, car_orn)
 
     def reset(self, seed=None, options=None):
         super().reset(seed=seed)

@@ -1,6 +1,8 @@
+import pprint
+from pathlib import Path
+
 import numpy as np
 import pybullet as p
-from pathlib import Path
 
 
 class Car:
@@ -77,6 +79,9 @@ class Car:
             if "wheel" in name:
                 self.wheel_joints.append(i)
 
+        pprint.pprint(f"steer joints index : {self.steer_joints}")
+        pprint.pprint(f"wheel joints index : {self.wheel_joints}")
+
     def _gen_world_direction(self, base_dir, fov, num):
         angles = np.linspace(-fov/2, fov/2, num)
         base_dir = base_dir / np.linalg.norm(base_dir)
@@ -150,7 +155,7 @@ class Car:
 
         return hit_data
 
-    def reset(self):
+    def reset(self, pos, orn):
         pass
 
     def action(self):
