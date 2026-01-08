@@ -12,7 +12,8 @@ def gen_center_point(length, radius, segments=51, pos=np.array([0, 0])):
     Args:
         length (float) : straight length of circuit.
         radius (float) : corner radius of circuit.
-        segments (int) : Division number of each section. (straight -> corner -> straight)
+        segments (int) : Division number of each section.
+                        (straight -> corner -> straight)
         pos (np.array) : center of circuit
 
     Return:
@@ -94,7 +95,8 @@ def gen_mesh_data(points, width, radius, in_out):
         radius (int) : corner radius
 
     Return:
-        points (list, np.array) : point for generate mesh [[l, c, r], [l, c, r], ...]
+        points (list, np.array) : point for generate mesh
+                                  [[l, c, r], [l, c, r], ...]
     """
 
     load_width = width
@@ -213,7 +215,6 @@ def export_obj(mesh_points, filename, in_out):
             out_left_points = mesh_points[:, 4:6]
             out_right_points = mesh_points[:, 6:]
 
-            # joined_verticies = np.vstack((in_left_points, in_right_points)) #* (N, 8) -> (4N, 2)
             in_verticies = np.vstack((in_left_points, in_right_points))
             out_verticies = np.vstack((out_left_points, out_right_points))
             joined_verticies = np.vstack((in_verticies, out_verticies))
