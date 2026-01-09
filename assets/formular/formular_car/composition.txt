@@ -1,0 +1,18 @@
+car.urdf is structured this.
+
+
+.
+└── body
+    ├── susp_fl (up, down)
+    │   └── steering_fl　(z-axis, left or right rotate)
+    │       └── wheel_fl (x-axis, free rotate)
+    ├── susp_fr (up, down)
+    │   └── steering_fr　(z-axis, left or right rotate)
+    │       └── wheel_fr (x-axis, free rotate)
+    ├── susp_rl (up, down)
+    │   └── steering_rl　(z-axis, left or right rotate)
+    │       └── wheel_rl (x-axis, free rotate)
+    └── susp_rr (up, down)
+        └── steering_rr　(z-axis, left or right rotate)
+            └── wheel_rr (x-axis, free rotate)
+    

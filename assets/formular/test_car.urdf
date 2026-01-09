@@ -1,0 +1,89 @@
+<?xml version="1.0"?>
+<robot name="f1_suspension">
+
+  <!-- ===================== -->
+  <!--  Body Link            -->
+  <!-- ===================== -->
+  <link name="body">
+    <inertial>
+        <mass value="1.0"/>
+        <inertia ixx="1.0" ixy="0.0" ixz="0.0" iyy="1.0" iyz="0.0" izz="1.0"/>
+    </inertial>
+    <visual>
+      <geometry>
+        <box size="1 0.5 0.2"/>
+      </geometry>
+      <origin xyz="0 0 0"/>
+    </visual>
+    <collision>
+        <geometry>
+        <box size="1 0.5 0.2"/>
+      </geometry>
+      <origin xyz="0 0 0"/>
+    </collision>
+  </link>
+
+
+  <!-- ===================== -->
+  <!--  Suspension Link      -->
+  <!-- ===================== -->
+  <link name="suspension">
+    <visual>
+      <geometry>
+        <cylinder length="0.6" radius="0.02"/>
+      </geometry>
+      <origin xyz="0 0 0"/>
+    </visual>
+  </link>
+
+
+  <!-- ===================== -->
+  <!--  Wheel Link           -->
+  <!-- ===================== -->
+  <link name="wheel">
+    <visual>
+      <geometry>
+        <cylinder length="0.2" radius="0.15"/>
+      </geometry>
+      <origin xyz="0 0 0" rpy="1.5708 0 0"/>
+    </visual>
+    <collision>
+        <geometry>
+        <cylinder length="0.2" radius="0.15"/>
+      </geometry>
+      <origin xyz="0 0 0" rpy="1.5708 0 0"/>
+    </collision>
+  </link>
+
+
+  <!-- ===================== -->
+  <!--  Joint: Body -> Suspension -->
+  <!-- ===================== -->
+  <joint name="joint_body_sus" type="revolute">
+    <parent link="body"/>
+    <child link="suspension"/>
+
+    <origin xyz="0.5 0 -0.1"/>
+
+    <axis xyz="1 0 0"/>
+
+    <limit lower="-0.5" upper="0.5" effort="0" velocity="0"/>
+  </joint>
+
+
+  <!-- ===================== -->
+  <!--  Joint: Suspension -> Wheel -->
+  <!-- ===================== -->
+  <joint name="joint_sus_wheel" type="revolute">
+    <parent link="suspension"/>
+    <child link="wheel"/>
+
+
+    <origin xyz="0.3 0 0"/>  
+
+    <axis xyz="1 0 0"/>
+
+    <limit lower="-1000" upper="1000" effort="0" velocity="0"/>
+  </joint>
+
+</robot>
