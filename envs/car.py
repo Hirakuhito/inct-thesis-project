@@ -4,9 +4,10 @@ from pathlib import Path
 import numpy as np
 import pybullet as p
 
+from main import config
+
 CURRENT_DIR = Path(__file__).resolve()
 PROJECT_ROOT = CURRENT_DIR.parent.parent
-from main import config
 
 
 class Car:
@@ -68,7 +69,7 @@ class Car:
             car_path,
             basePosition=self.base_pos,
             baseOrientation=self.base_orn,
-            globalScaling=0.2
+            globalScaling=config.CAR["scale"]
         )
 
     def _get_joints_info(self):
@@ -108,7 +109,7 @@ class Car:
         for sensor in self.sensors:
             rays = []
 
-            dirs_local = self.gen_world_direction(
+            dirs_local = self._gen_world_direction(
                 sensor["base_direction"],
                 sensor["fov"],
                 sensor["num_rays"]
@@ -126,8 +127,33 @@ class Car:
 
         return all_rays
 
+    def is_out_of_track(self, obs):
+        sensor = obs[6:]
+        min_dist = sensor.min()
+        return min_dist < 0.05
+
+    def get_wheel_contact(self, ground_ids):
+        contacts = []
+
+        for wheel in self.wheel_joints:
+            is_contact = False
+
+            for ground_id in ground_ids:
+                pts = p.getContactPoints(
+                    bodyA=self.car_id,
+                    bodyB=ground_id,
+                    linkIndexA=wheel
+                )
+                if len(pts) > 0:
+                    is_contact = True
+                    break
+
+                contacts.append(is_contact)
+
+        return contacts
+
     def checkHit(self):
-        all_rays = self.local2world()
+        all_rays = self._local2world()
 
         starts = []
         ends = []
@@ -139,6 +165,8 @@ class Car:
                 starts.append(s)
                 ends.append(e)
                 ray_map.append((sensor_index, ray_index))
+
+                # p.addUserDebugLine(s, e, [1, 0, 0], 1, 0.1)
 
         results = p.rayTestBatch(starts, ends)
 
@@ -158,7 +186,33 @@ class Car:
         return hit_data
 
     def reset(self, pos, orn):
-        pass
+        p.resetBasePositionAndOrientation(
+            self.car_id,
+            pos,
+            orn
+        )
+        p.resetBaseVelocity(self.car_id, [0, 0, 0], [0, 0, 0])
 
-    def action(self):
-        pass
+    def apply_action(self, throttle, brake, steer, max_torque,
+                     max_brake, max_steer):
+        steer_angle = steer * max_steer
+
+        for j in self.steer_joints:
+            p.setJointMotorControl2(
+                self.car_id,
+                j,
+                p.POSITION_CONTROL,
+                targetPosition=steer_angle
+            )
+
+        # drive_force = throttle * max_torque
+        # brake_force = brake * max_brake
+
+        for j in self.wheel_joints:
+            p.setJointMotorControl2(
+                self.car_id,
+                j,
+                p.VELOCITY_CONTROL,
+                targetVelocity=300,
+                force=-max_torque
+            )

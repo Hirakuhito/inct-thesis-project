@@ -63,7 +63,8 @@ class RacingEnv(gym.Env):
 
         p.setAdditionalSearchPath(pd.getDataPath())
         p.resetSimulation()
-        p.setGravity(0, 0, -9.8)
+        p.setGravity(*config.GRAVITY)
+        p.setTimeStep(1. / 240.)
 
         # load track and car
         track_base_pos = [0, 0, 0]
@@ -84,7 +85,7 @@ class RacingEnv(gym.Env):
             meshScale=[1.0, 1.0, 1.0]
         )
 
-        track_id = p.createMultiBody(
+        self.track_id = p.createMultiBody(
             baseMass=0,
             baseCollisionShapeIndex=track_coll_id,
             baseVisualShapeIndex=track_vis_id,
@@ -107,7 +108,7 @@ class RacingEnv(gym.Env):
             meshScale=[1.0, 1.0, 1.0]
         )
 
-        runoff_id = p.createMultiBody(
+        self.runoff_id = p.createMultiBody(
             baseMass=0,
             baseCollisionShapeIndex=runoff_coll_id,
             baseVisualShapeIndex=runoff_vis_id,
@@ -115,13 +116,66 @@ class RacingEnv(gym.Env):
             baseOrientation=track_base_orient
         )
 
-        car = Car(car_pos, car_orn)
+        self.car = Car(car_pos, car_orn)
+
+    def _get_obs(self):
+        pos, orn = p.getBasePositionAndOrientation(self.car.car_id)
+        vel, ang_vel = p.getBaseVelocity(self.car.car_id)
+
+        sensor = self.car.checkHit()
+        sensor_flat = np.concatenate(sensor)
+
+        obs = np.concatenate([
+             np.array(pos),
+             np.array(vel),
+             sensor_flat
+        ])
+
+        return obs.astype(np.float32)
+
+    def _calc_reward(self, obs):
+        vel = obs[3:6]
+        reward = np.linalg.norm(vel)
+
+        return reward
+
+    def _check_terminate(self, obs):
+        return False
 
     def reset(self, seed=None, options=None):
+        init_pos = [config.CIRCUIT["radius"], 0, 0.2]
+        init_orn = p.getQuaternionFromEuler([0, 0, 0])
+
         super().reset(seed=seed)
 
-        obs = np.zeros(self.observation_space.shape)
+        self.car.reset(init_pos, init_orn)
+        self.step_count = 0
+
+        obs = self._get_obs()
         return obs, {}
+
+    def step(self, action):
+        self.step_count += 1
+
+        throttle, brake, steer = action
+
+        self.car.apply_action(
+            throttle=throttle,
+            brake=brake,
+            steer=steer,
+            max_torque=self.max_torque,
+            max_brake=self.max_brake_force,
+            max_steer=self.max_steer_angle
+        )
+
+        p.stepSimulation()
+
+        obs = self._get_obs()
+        reward = self._calc_reward(obs)
+        terminated = self._check_terminate(obs)
+        truncated = self.step_count >= self.max_steps
+
+        return obs, reward, terminated, truncated, {}
 
     def close(self):
         if self.engine_id is not None:
