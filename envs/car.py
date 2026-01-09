@@ -72,6 +72,21 @@ class Car:
             globalScaling=config.CAR["scale"]
         )
 
+        p.changeDynamics(
+            self.car_id,
+            -1,
+            lateralFriction=config.FRICTION["body"]
+        )
+
+        for j in self.wheel_joints:
+            p.changeDynamics(
+                self.car_id,
+                j,
+                lateralFriction=config.FRICTION["lateral"],
+                rollingFriction=config.FRICTION["rolling"],
+                spiningFriction=config.FRICTION["spining"]
+            )
+
     def _get_joints_info(self):
         for i in range(p.getNumJoints(self.car_id)):
             info = p.getJointInfo(self.car_id, i)
@@ -132,25 +147,28 @@ class Car:
         min_dist = sensor.min()
         return min_dist < 0.05
 
-    def get_wheel_contact(self, ground_ids):
+    def get_wheel_contact(self, ground_id):
         contacts = []
 
         for wheel in self.wheel_joints:
             is_contact = False
 
-            for ground_id in ground_ids:
-                pts = p.getContactPoints(
-                    bodyA=self.car_id,
-                    bodyB=ground_id,
-                    linkIndexA=wheel
-                )
-                if len(pts) > 0:
-                    is_contact = True
-                    break
+            pts = p.getContactPoints(
+                bodyA=self.car_id,
+                bodyB=ground_id,
+                linkIndexA=wheel
+            )
 
-                contacts.append(is_contact)
+            if len(pts) > 0:
+                is_contact = True
+
+            contacts.append(is_contact)
 
         return contacts
+
+    def is_all_wheels_off(self, ground_id):
+        contacts = self.get_wheel_contact(ground_id)
+        return not any(contacts)
 
     def checkHit(self):
         all_rays = self._local2world()

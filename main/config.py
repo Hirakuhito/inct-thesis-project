@@ -1,6 +1,6 @@
 import numpy as np
 
-MAX_STEPS = 10_000
+MAX_STEPS = 1_000
 TOTAL_TIME_STEP = 50_000
 GRAVITY = [0, 0, -9.8]
 
@@ -21,4 +21,13 @@ CAR = {
     "max_torque": 100.0,
     "max_brake_force": 100.0,
     "max_steer_angle": np.pi / 3
+}
+
+FRICTION = {
+    "body": 1.0,
+    "track": 1.5,
+    "runoff": 1.0,
+    "lateral": 2.0,
+    "rolling": 0.01,
+    "spining": 0.01
 }

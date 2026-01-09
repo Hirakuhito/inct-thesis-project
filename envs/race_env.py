@@ -41,6 +41,7 @@ class RacingEnv(gym.Env):
         # *============ params ============
         self.max_steps = config.MAX_STEPS
         self.step_count = 0
+        self.off_ground_count = 0
 
         self.max_torque = config.CAR["max_torque"]
         self.max_brake_force = config.CAR["max_brake_force"]
@@ -118,6 +119,20 @@ class RacingEnv(gym.Env):
 
         self.car = Car(car_pos, car_orn)
 
+        p.changeDynamics(
+            self.track_id,
+            -1,
+            lateralFriction=config.FRICTION["track"]
+        )
+        p.changeDynamics(
+            self.runoff_id,
+            -1,
+            lateralFriction=config.FRICTION["runoff"]
+        )
+
+        for i in range(50):
+            p.stepSimulation()
+
     def _get_obs(self):
         pos, orn = p.getBasePositionAndOrientation(self.car.car_id)
         vel, ang_vel = p.getBaseVelocity(self.car.car_id)
@@ -150,8 +165,13 @@ class RacingEnv(gym.Env):
 
         self.car.reset(init_pos, init_orn)
         self.step_count = 0
+        self.off_ground_count = 0
 
         obs = self._get_obs()
+
+        for i in range(50):
+            p.stepSimulation()
+
         return obs, {}
 
     def step(self, action):
@@ -172,8 +192,15 @@ class RacingEnv(gym.Env):
 
         obs = self._get_obs()
         reward = self._calc_reward(obs)
-        terminated = self._check_terminate(obs)
+
+        off_all_wheels = self.car.is_all_wheels_off(self.track_id)
+        self.off_ground_count += 1 if off_all_wheels else 0
+
+        terminated = self._check_terminate(obs) or (self.off_ground_count > 3)
         truncated = self.step_count >= self.max_steps
+
+        if terminated:
+            reward -= 10.0
 
         return obs, reward, terminated, truncated, {}
 
