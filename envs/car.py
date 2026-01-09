@@ -4,6 +4,10 @@ from pathlib import Path
 import numpy as np
 import pybullet as p
 
+CURRENT_DIR = Path(__file__).resolve()
+PROJECT_ROOT = CURRENT_DIR.parent.parent
+from main import config
+
 
 class Car:
     def __init__(self, pos, orn):
@@ -58,9 +62,7 @@ class Car:
         ]
 
     def _setup_car(self):
-        current_path = Path(__file__).resolve()
-        car_directory = "formular/formular_car/car.urdf"
-        car_path = str(current_path.parent.parent / car_directory)
+        car_path = str(PROJECT_ROOT / config.CAR["path"] / config.CAR["urdf"])
 
         self.car_id = p.loadURDF(
             car_path,

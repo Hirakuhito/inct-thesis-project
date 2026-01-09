@@ -7,6 +7,10 @@ import pybullet_data as pd
 from gymnasium import spaces
 
 from envs.car import Car
+from main import config
+
+CURRENT_DIR = Path(__file__).resolve()
+PROJECT_ROOT = CURRENT_DIR.parent.parent
 
 
 class RacingEnv(gym.Env):
@@ -31,23 +35,22 @@ class RacingEnv(gym.Env):
             dtype=np.float32
         )
 
-        self.track_name = "track"
-        self.runoff_name = "runoff"
+        self.track_name = config.CIRCUIT["track"]
+        self.runoff_name = config.CIRCUIT["runoff"]
 
         # *============ params ============
-        self.max_steps = 10_000
+        self.max_steps = config.MAX_STEPS
         self.step_count = 0
 
-        self.max_torque = 0
-        self.max_brake = 0
-        self.max_steer = 1.0
+        self.max_torque = config.CAR["max_torque"]
+        self.max_brake_force = config.CAR["max_brake_force"]
+        self.max_steer_angle = config.CAR["max_steer_angle"]
         # *================================
 
         self._setup_env(car_pos, car_orn)
 
     def _setup_env(self, car_pos, car_orn):
-        current_path = Path(__file__).resolve()
-        circuit_data_path = current_path.parent.parent / "circuitData"
+        circuit_data_path = PROJECT_ROOT / config.CIRCUIT["path"]
 
         track_file_path = str(circuit_data_path / (self.track_name + ".obj"))
         runoff_file_path = str(circuit_data_path / (self.runoff_name + ".obj"))
