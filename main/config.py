@@ -1,5 +1,6 @@
 import numpy as np
 
+RENDER = True
 MAX_STEPS = 1_000
 TOTAL_TIME_STEP = 50_000
 GRAVITY = [0, 0, -9.8]

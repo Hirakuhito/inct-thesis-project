@@ -1,15 +1,15 @@
 import pybullet as p
+from stable_baselines3 import PPO
 
 from envs.race_env import RacingEnv
 
 from . import config
-from stable_baselines3 import PPO
 
 
 def main():
     car_pos = [config.CIRCUIT["radius"], 0, 0.1]
     car_orn = p.getQuaternionFromEuler([0, 0, 0])
-    env = RacingEnv(car_pos, car_orn, render=True)
+    env = RacingEnv(car_pos, car_orn, render=config.RENDER)
     model = PPO(
         "MlpPolicy",
         env,

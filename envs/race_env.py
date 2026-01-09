@@ -157,6 +157,17 @@ class RacingEnv(gym.Env):
     def _check_terminate(self, obs):
         return False
 
+    def _update_cam_pos(self):
+        pos, orn = p.getBasePositionAndOrientation(self.car.car_id)
+        yaw = p.getEulerFromQuaternion(orn)[2]
+
+        p.resetDebugVisualizerCamera(
+            cameraDistance=4.0,
+            cameraYaw=np.degrees(yaw),
+            cameraPitch=-45,
+            cameraTargetPosition=pos
+        )
+
     def reset(self, seed=None, options=None):
         init_pos = [config.CIRCUIT["radius"], 0, 0.2]
         init_orn = p.getQuaternionFromEuler([0, 0, 0])
@@ -201,6 +212,11 @@ class RacingEnv(gym.Env):
 
         if terminated:
             reward -= 10.0
+
+        if self.render:
+            if not self.car.is_all_wheels_off(self.track_id):
+                self._update_cam_pos()
+                self.car.draw_car_info(throttle, brake, steer)
 
         return obs, reward, terminated, truncated, {}
 

@@ -142,6 +142,34 @@ class Car:
 
         return all_rays
 
+    def draw_car_info(self, throttle, brake, steer):
+        pos, orn = p.getBasePositionAndOrientation(self.car_id)
+        base = np.array(pos) + np.array([0, 0, 1.0])
+
+        dy = 0.2
+
+        p.addUserDebugText(
+            f"Throttle: {throttle:.2f}",
+            (base + np.array([0, 0, 0])).tolist(),
+            textColorRGB=[1, 1, 1],
+            lifeTime=0.3,
+            textSize=1.1
+        )
+        p.addUserDebugText(
+            f"Brake   : {brake:.2f}",
+            (base + np.array([0, 0, -dy])).tolist(),
+            textColorRGB=[1, 1, 1],
+            lifeTime=0.2,
+            textSize=1.1
+        )
+        p.addUserDebugText(
+            f"Steer   : {steer:.2f}",
+            (base + np.array([0, 0, -2*dy])).tolist(),
+            textColorRGB=[1, 1, 1],
+            lifeTime=0.1,
+            textSize=1.1
+        )
+
     def is_out_of_track(self, obs):
         sensor = obs[6:]
         min_dist = sensor.min()
