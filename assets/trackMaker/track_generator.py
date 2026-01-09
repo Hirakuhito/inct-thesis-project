@@ -1,13 +1,14 @@
 from . import track_info_generator as tig
+from main import config
 
 
 def main():
-    straight = 7
-    radius = 3
-    width = 2
+    straight = config.CIRCUIT["straight"]
+    radius = config.CIRCUIT["radius"]
+    width = config.CIRCUIT["width"]
 
-    track_name = "track"
-    runoff_name = "runoff"
+    track_name = config.CIRCUIT["track"]
+    runoff_name = config.CIRCUIT["runoff"]
 
     points = tig.gen_center_point(straight, radius)
 
