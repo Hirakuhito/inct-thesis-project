@@ -1,8 +1,8 @@
 import numpy as np
 
-RENDER = True
-MAX_STEPS = 1_000
-TOTAL_TIME_STEP = 50_000
+RENDER = False
+MAX_STEPS = 2_000
+TOTAL_TIME_STEP = 5_000_000
 GRAVITY = [0, 0, -9.8]
 
 CIRCUIT = {
