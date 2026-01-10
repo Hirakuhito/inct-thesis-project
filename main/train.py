@@ -3,6 +3,7 @@ from pathlib import Path
 
 import pybullet as p
 from stable_baselines3 import PPO
+from stable_baselines3.common.callbacks import CheckpointCallback, EvalCallback
 
 from envs.race_env import RacingEnv
 
@@ -13,18 +14,37 @@ PROJECT_ROOT = CURRENT_DIR.parent.parent
 
 
 def main():
+    checkpoint_dir, best_model_dir, eval_log_dir, tb_log_dir = gen_exp_data_dir()
+
     car_pos = [config.CIRCUIT["radius"], 0, 0.1]
     car_orn = p.getQuaternionFromEuler([0, 0, 0])
     env = RacingEnv(car_pos, car_orn, render=config.RENDER)
+    eval_env = RacingEnv(car_pos, car_orn, render=False)
+
     model = PPO(
         "MlpPolicy",
         env,
         verbose=1,
-        tensorboard_log="./tb_logs/"
+        tensorboard_log=str(tb_log_dir)
+    )
+
+    checkpoint_cb = CheckpointCallback(
+        save_freq=config.SAVE_FREQ,
+        save_path=str(checkpoint_dir),
+        name_prefix="ppo"
+    )
+
+    eval_cb = EvalCallback(
+        eval_env,
+        best_model_save_path=str(best_model_dir),
+        log_path=str(eval_log_dir),
+        eval_freq=config.SAVE_FREQ,
+        deterministic=True
     )
 
     model.learn(
         total_timesteps=config.TOTAL_TIME_STEP,
+        callback=[checkpoint_cb, eval_cb],
         tb_log_name="ML_v1"
     )
 
@@ -33,6 +53,22 @@ def main():
     file_path = PROJECT_ROOT / "models" / filename
     model.save(str(file_path))
 
+    print(f"Training finished. Results saved in: {file_path}")
+
+
+def gen_exp_data_dir():
+    run_id = datetime.now().strftime("%Y%m%d_%H%M%S")
+    base_dir = PROJECT_ROOT / "experiments" / f"run_{run_id}"
+
+    checkpoint_dir = base_dir / "checkpoints"
+    best_model_dir = base_dir / "best_model"
+    eval_log_dir = base_dir / "eval_logs"
+    tb_log_dir = base_dir / "tb_logs"
+
+    for d in [checkpoint_dir, best_model_dir, eval_log_dir, tb_log_dir]:
+        d.mkdir(parents=True, exist_ok=True)
+
+    return checkpoint_dir, best_model_dir, eval_log_dir, tb_log_dir
 
 if __name__ == "__main__":
     main()
