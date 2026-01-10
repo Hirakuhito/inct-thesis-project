@@ -18,7 +18,11 @@ def main():
     checkpoint_dir, best_model_dir, \
         eval_log_dir, tb_log_dir = gen_exp_data_dir()
 
-    car_pos = [config.CIRCUIT["radius"], 0, 0.1]
+    car_pos = [
+        config.CAR["base_x"],
+        config.CAR["base_y"],
+        config.CAR["base_z"]
+    ]
     car_orn = p.getQuaternionFromEuler([0, 0, 0])
     env = RacingEnv(car_pos, car_orn, render=config.RENDER)
     env = Monitor(env)

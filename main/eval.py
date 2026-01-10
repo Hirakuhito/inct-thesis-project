@@ -14,13 +14,17 @@ PROJECT_ROOT = CURRENT_DIR.parent.parent
 
 
 def main():
-    car_pos = [config.CIRCUIT["radius"], 0, 0.1]
+    car_pos = [
+        config.CAR["base_x"],
+        config.CAR["base_y"],
+        config.CAR["base_z"]
+    ]
     car_orn = p.getQuaternionFromEuler([0, 0, 0])
 
     env = RacingEnv(car_pos, car_orn, render=True)
     env = Monitor(env)
 
-    run_name = "run_20260110_231041"
+    run_name = "run_20260111_003133"
     model_path = PROJECT_ROOT / "experiments" / run_name \
         / "best_model" / "best_model"
 

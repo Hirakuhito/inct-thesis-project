@@ -1,3 +1,4 @@
+import time
 from pathlib import Path
 
 import gymnasium as gym
@@ -46,6 +47,10 @@ class RacingEnv(gym.Env):
         self.max_torque = config.CAR["max_torque"]
         self.max_brake_force = config.CAR["max_brake_force"]
         self.max_steer_angle = config.CAR["max_steer_angle"]
+
+        self.lap_started = False
+        self.start_time = 0.0
+        self.prev_inside = False
         # *================================
 
         self._setup_env(car_pos, car_orn)
@@ -117,6 +122,18 @@ class RacingEnv(gym.Env):
             baseOrientation=track_base_orient
         )
 
+        goal_vis = p.createVisualShape(
+            p.GEOM_BOX,
+            halfExtents=[config.CIRCUIT["width"]/2, 0.05, 0.01],
+            rgbaColor=[1, 0, 0, 0.4]
+        )
+
+        self.goal_id = p.createMultiBody(
+            baseMass=0,
+            baseVisualShapeIndex=goal_vis,
+            basePosition=[config.CIRCUIT["radius"], 0, 0.02]
+        )
+
         self.car = Car(car_pos, car_orn)
 
         p.changeDynamics(
@@ -148,9 +165,30 @@ class RacingEnv(gym.Env):
 
         return obs.astype(np.float32)
 
+    def _accross_goal(self):
+        pos, orn = p.getBasePositionAndOrientation(self.car.car_id)
+        p_car = np.array(pos[:2])
+
+        rot = np.array(p.getMatrixFromQuaternion(orn)).reshape(3, 3)
+        d = rot[:, 1]
+        d2 = d[:2]
+        d2 = d2 / np.linalg.norm(d2)
+        n = np.array([-d2[1], d2[0]])
+
+        rel = p_car - np.array([config.CIRCUIT["radius"], 0])
+        long = np.dot(rel, d2)
+        lat = np.dot(rel, n)
+
+        inside = (
+            0.0 <= long <= 0.1 and
+            abs(lat) <= config.CIRCUIT["width"] / 2
+        )
+
+        return inside
+
     def _calc_reward(self, obs):
         vel = obs[3:6]
-        reward = np.linalg.norm(vel)
+        reward = np.linalg.norm(vel) * 10
 
         return reward
 
@@ -169,7 +207,11 @@ class RacingEnv(gym.Env):
         )
 
     def reset(self, seed=None, options=None):
-        init_pos = [config.CIRCUIT["radius"], 0, 0.2]
+        init_pos = [
+            config.CAR["base_x"],
+            config.CAR["base_y"],
+            config.CAR["base_z"]
+        ]
         init_orn = p.getQuaternionFromEuler([0, 0, 0])
 
         super().reset(seed=seed)
@@ -177,6 +219,9 @@ class RacingEnv(gym.Env):
         self.car.reset(init_pos, init_orn)
         self.step_count = 0
         self.off_ground_count = 0
+
+        self.prev_inside = False
+        self.start_time = 0.0
 
         obs = self._get_obs()
 
@@ -200,6 +245,22 @@ class RacingEnv(gym.Env):
         )
 
         p.stepSimulation()
+
+        inside = self._accross_goal()
+        if inside and not self.prev_inside:
+            self.prev_inside = True
+
+            if not self.lap_started:
+                self.lap_started = True
+                self.start_time = time.time()
+
+            else:
+                lap_time = time.time() - self.start_time
+                print(f"Lap: {lap_time:.2f}s")
+                # self.lap_started = False
+
+        elif not inside and self.prev_inside:
+            self.prev_inside = False
 
         obs = self._get_obs()
         reward = self._calc_reward(obs)
