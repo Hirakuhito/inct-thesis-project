@@ -4,6 +4,7 @@ from pathlib import Path
 import pybullet as p
 from stable_baselines3 import PPO
 from stable_baselines3.common.callbacks import CheckpointCallback, EvalCallback
+from stable_baselines3.common.monitor import Monitor
 
 from envs.race_env import RacingEnv
 
@@ -14,11 +15,13 @@ PROJECT_ROOT = CURRENT_DIR.parent.parent
 
 
 def main():
-    checkpoint_dir, best_model_dir, eval_log_dir, tb_log_dir = gen_exp_data_dir()
+    checkpoint_dir, best_model_dir, \
+        eval_log_dir, tb_log_dir = gen_exp_data_dir()
 
     car_pos = [config.CIRCUIT["radius"], 0, 0.1]
     car_orn = p.getQuaternionFromEuler([0, 0, 0])
     env = RacingEnv(car_pos, car_orn, render=config.RENDER)
+    env = Monitor(env)
     eval_env = RacingEnv(car_pos, car_orn, render=False)
 
     model = PPO(
@@ -69,6 +72,7 @@ def gen_exp_data_dir():
         d.mkdir(parents=True, exist_ok=True)
 
     return checkpoint_dir, best_model_dir, eval_log_dir, tb_log_dir
+
 
 if __name__ == "__main__":
     main()
