@@ -198,7 +198,7 @@ class Car:
         contacts = self.get_wheel_contact(ground_id)
         return not any(contacts)
 
-    def checkHit(self):
+    def checkHit(self, obj_dict):
         all_rays = self._local2world()
 
         starts = []
@@ -227,10 +227,12 @@ class Car:
             hit_object_uid = hit[0]
             # print(f"hit_object_uid : {hit_object_uid}")
 
-            if hit_object_uid < 0:
-                hit_data[sensor_index].append(-1)
+            if hit_object_uid == obj_dict["track"]:
+                hit_data[sensor_index].append(1.0)
+            elif hit_object_uid == obj_dict["runoff"]:
+                hit_data[sensor_index].append(-1.0)
             else:
-                hit_data[sensor_index].append(hit_object_uid)
+                hit_data[sensor_index].append(0.0)
 
         return hit_data
 

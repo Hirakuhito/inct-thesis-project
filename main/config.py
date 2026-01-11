@@ -22,7 +22,7 @@ CAR = {
     "scale": 0.2,
     "base_x": CIRCUIT["radius"],
     "base_y": -0.6,
-    "base_z": 0.05,
+    "base_z": 0.1,
     "max_engine_force": 1200.0,
     "max_torque": 100.0,
     "max_brake_force": 100.0,

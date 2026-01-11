@@ -148,9 +148,8 @@ class RacingEnv(gym.Env):
         )
 
         self.obj_dict = {
-            self.track_id: "track",
-            self.runoff_id: "runoff",
-            -1: "none"
+            "track": self.track_id,
+            "runoff": self.runoff_id
         }
 
         for i in range(50):
@@ -161,7 +160,7 @@ class RacingEnv(gym.Env):
         pos, orn = p.getBasePositionAndOrientation(self.car.car_id)
         vel, ang_vel = p.getBaseVelocity(self.car.car_id)
 
-        sensor = self.car.checkHit()
+        sensor = self.car.checkHit(self.obj_dict)
         sensor_flat = np.concatenate(sensor)
 
         obs = np.concatenate([
@@ -195,12 +194,31 @@ class RacingEnv(gym.Env):
 
     def _calc_reward(self, obs):
         vel = obs[3:6]
-        reward = np.linalg.norm(vel) * 10
+        speed = np.linalg.norm(vel)
+
+        speed_reward = max(speed, 0.0) * 0.1
+
+        sensor_hits = self.car.checkHit(self.obj_dict)
+        sensor_reward = np.mean([np.mean(s) for s in sensor_hits]) * 0.5
+
+        reward = speed_reward + sensor_reward
 
         return reward
 
-    def _check_terminate(self, obs):
-        return False
+    def _check_terminate(self):
+        terminate = False
+
+        off_count = 0
+        wheel_contacts = self.car.get_wheel_contact(self.track_id)
+
+        for wheel in wheel_contacts:
+            if not wheel:
+                off_count += 1
+
+        if off_count > 2:
+            terminate = True
+
+        return terminate
 
     def _update_cam_pos(self):
         pos, orn = p.getBasePositionAndOrientation(self.car.car_id)
@@ -253,7 +271,7 @@ class RacingEnv(gym.Env):
 
         p.stepSimulation()
 
-        print(f"hit_data : {self.car.checkHit()}")
+        # print(f"hit_data : {self.car.checkHit(self.obj_dict)}")
 
         goal_inside = self._accross_goal()
         if goal_inside and not self.goal_prev_inside:
@@ -277,7 +295,7 @@ class RacingEnv(gym.Env):
         off_all_wheels = self.car.is_all_wheels_off(self.track_id)
         self.off_ground_count += 1 if off_all_wheels else 0
 
-        terminated = self._check_terminate(obs) or (self.off_ground_count > 3)
+        terminated = self._check_terminate() or (self.off_ground_count > 3)
         truncated = self.step_count >= self.max_steps
 
         if terminated:
