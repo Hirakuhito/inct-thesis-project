@@ -49,7 +49,7 @@ class RacingEnv(gym.Env):
         self.max_steer_angle = config.CAR["max_steer_angle"]
 
         self.lap_started = False
-        self.start_time = 0.0
+        self.start_time = time.time()
         self.goal_prev_inside = False
         # *================================
 
@@ -247,8 +247,8 @@ class RacingEnv(gym.Env):
         self.step_count = 0
         self.off_ground_count = 0
 
-        self.prev_inside = False
-        self.start_time = 0.0
+        self.goal_prev_inside = False
+        self.start_time = time.time()
 
         obs = self._get_obs()
 
@@ -287,11 +287,15 @@ class RacingEnv(gym.Env):
                 print("Lap start")
             else:
                 lap_time = now - self.start_time
-                print(f"[ENV {self.env_id}] Lap: {lap_time:.2f}s")
+                if self.render:
+                    print(f"Lap time : {lap_time}")
                 self.start_time = now
 
         elif not goal_inside and self.goal_prev_inside:
             self.goal_prev_inside = False
+
+        # print(f"goal_inside : {goal_inside}, "
+        #       f"goal_prev_inside : {self.goal_prev_inside}")
 
         obs = self._get_obs()
         reward = self._calc_reward(obs)
@@ -308,7 +312,7 @@ class RacingEnv(gym.Env):
         if self.render:
             if not self.car.is_all_wheels_off(self.track_id):
                 self._update_cam_pos()
-                self.car.draw_car_info(throttle, brake, steer)
+                # self.car.draw_car_info(throttle, brake, steer)
 
         return obs, reward, terminated, truncated, {}
 
