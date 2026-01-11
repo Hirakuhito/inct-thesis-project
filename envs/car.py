@@ -25,7 +25,7 @@ class Car:
 
         self.sensor_f = {
             "origin": np.array([0.0, 0.5, 0.0]),
-            "base_direction": np.array([0.0, 1.0, -0.05]),
+            "base_direction": np.array([0.0, 1.0, -0.1]),
             "length": 2.5,
             "fov": np.deg2rad(120),
             "num_rays": 7
@@ -109,7 +109,7 @@ class Car:
             rot = np.array([
                 [np.cos(a), -np.sin(a), 0],
                 [np.sin(a),  np.cos(a), 0],
-                [0,        0,       0],
+                [0,        0,       1],
             ])
             dirs.append(rot @ base_dir)
 
@@ -211,10 +211,13 @@ class Car:
                 starts.append(s)
                 ends.append(e)
                 ray_map.append((sensor_index, ray_index))
-
                 # p.addUserDebugLine(s, e, [1, 0, 0], 1, 0.1)
 
+            # print(f"starts: {starts}")
+            # print(f"ends: {ends}")
+
         results = p.rayTestBatch(starts, ends)
+        # print(f"result : {results}")
 
         hit_data = [
             [] for _ in range(len(all_rays))
@@ -222,12 +225,12 @@ class Car:
 
         for (sensor_index, _), hit in zip(ray_map, results):
             hit_object_uid = hit[0]
-            hit_fraction = hit[2]
+            # print(f"hit_object_uid : {hit_object_uid}")
 
             if hit_object_uid < 0:
-                hit_data[sensor_index].append(1.0)
+                hit_data[sensor_index].append(-1)
             else:
-                hit_data[sensor_index].append(hit_fraction)
+                hit_data[sensor_index].append(hit_object_uid)
 
         return hit_data
 

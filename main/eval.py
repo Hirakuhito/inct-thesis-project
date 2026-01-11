@@ -44,7 +44,7 @@ def main():
 
         keys = p.getKeyboardEvents()
 
-        if ord('q') in keys and keys[ord('q')] & p.KEY_WAS_TRIGGERD:
+        if ord('q') in keys and keys[ord('q')] & p.KEY_WAS_TRIGGERED:
             break
 
         if terminated or truncated:

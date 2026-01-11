@@ -50,7 +50,7 @@ class RacingEnv(gym.Env):
 
         self.lap_started = False
         self.start_time = 0.0
-        self.prev_inside = False
+        self.goal_prev_inside = False
         # *================================
 
         self._setup_env(car_pos, car_orn)
@@ -147,8 +147,15 @@ class RacingEnv(gym.Env):
             lateralFriction=config.FRICTION["runoff"]
         )
 
+        self.obj_dict = {
+            self.track_id: "track",
+            self.runoff_id: "runoff",
+            -1: "none"
+        }
+
         for i in range(50):
             p.stepSimulation()
+            self._update_cam_pos()
 
     def _get_obs(self):
         pos, orn = p.getBasePositionAndOrientation(self.car.car_id)
@@ -246,9 +253,11 @@ class RacingEnv(gym.Env):
 
         p.stepSimulation()
 
-        inside = self._accross_goal()
-        if inside and not self.prev_inside:
-            self.prev_inside = True
+        print(f"hit_data : {self.car.checkHit()}")
+
+        goal_inside = self._accross_goal()
+        if goal_inside and not self.goal_prev_inside:
+            self.goal_prev_inside = True
 
             if not self.lap_started:
                 self.lap_started = True
@@ -259,8 +268,8 @@ class RacingEnv(gym.Env):
                 print(f"Lap: {lap_time:.2f}s")
                 # self.lap_started = False
 
-        elif not inside and self.prev_inside:
-            self.prev_inside = False
+        elif not goal_inside and self.goal_prev_inside:
+            self.goal_prev_inside = False
 
         obs = self._get_obs()
         reward = self._calc_reward(obs)
