@@ -55,6 +55,8 @@ class RacingEnv(gym.Env):
 
         self._setup_env(car_pos, car_orn)
 
+        self.env_id = id(self)
+
     def _setup_env(self, car_pos, car_orn):
         circuit_data_path = PROJECT_ROOT / config.CIRCUIT["path"]
 
@@ -274,17 +276,19 @@ class RacingEnv(gym.Env):
         # print(f"hit_data : {self.car.checkHit(self.obj_dict)}")
 
         goal_inside = self._accross_goal()
+
         if goal_inside and not self.goal_prev_inside:
+            now = time.time()
             self.goal_prev_inside = True
 
             if not self.lap_started:
                 self.lap_started = True
-                self.start_time = time.time()
-
+                self.start_time = now
+                print("Lap start")
             else:
-                lap_time = time.time() - self.start_time
-                print(f"Lap: {lap_time:.2f}s")
-                # self.lap_started = False
+                lap_time = now - self.start_time
+                print(f"[ENV {self.env_id}] Lap: {lap_time:.2f}s")
+                self.start_time = now
 
         elif not goal_inside and self.goal_prev_inside:
             self.goal_prev_inside = False
