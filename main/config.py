@@ -1,15 +1,9 @@
 import numpy as np
 
 RENDER = False
-<<<<<<< HEAD
-MAX_STEPS = 10_000
-TOTAL_TIME_STEP = 1_000_000
-N_SPLIT = 10
-=======
 MAX_STEPS = 3_000
 TOTAL_TIME_STEP = 500_000
 N_SPLIT = 100
->>>>>>> c48ae84 (-)
 SAVE_FREQ = TOTAL_TIME_STEP // N_SPLIT
 GRAVITY = [0, 0, -9.8]
 
