@@ -1,3 +1,4 @@
+import math
 import time
 from pathlib import Path
 
@@ -42,6 +43,7 @@ class RacingEnv(gym.Env):
         # *============ params ============
         self.max_steps = config.MAX_STEPS
         self.step_count = 0
+        self.global_step = 0
         self.off_ground_count = 0
 
         self.max_torque = config.CAR["max_torque"]
@@ -194,7 +196,7 @@ class RacingEnv(gym.Env):
 
         return inside
 
-    def _calc_reward(self, obs):
+    def _calc_reward(self, obs, steer):
         vel = obs[3:6]
         speed = np.linalg.norm(vel)
 
@@ -203,7 +205,12 @@ class RacingEnv(gym.Env):
         sensor_hits = self.car.checkHit(self.obj_dict)
         sensor_reward = np.mean([np.mean(s) for s in sensor_hits]) * 0.5
 
-        reward = speed_reward + sensor_reward
+        p = self.global_step / config.TOTAL_TIME_STEP
+        s = 1 / (1 + math.exp(-11 * (p - 0.5)))
+        steer_weight = 0.3 * (1 - s)
+        steer_reward = -steer_weight * abs(steer)
+
+        reward = speed_reward + sensor_reward + steer_reward
 
         return reward
 
@@ -259,6 +266,7 @@ class RacingEnv(gym.Env):
 
     def step(self, action):
         self.step_count += 1
+        self.global_step += 1
 
         throttle, brake, steer = action
 
@@ -298,7 +306,7 @@ class RacingEnv(gym.Env):
         #       f"goal_prev_inside : {self.goal_prev_inside}")
 
         obs = self._get_obs()
-        reward = self._calc_reward(obs)
+        reward = self._calc_reward(obs, steer)
 
         off_all_wheels = self.car.is_all_wheels_off(self.track_id)
         self.off_ground_count += 1 if off_all_wheels else 0
