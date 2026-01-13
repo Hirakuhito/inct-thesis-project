@@ -43,8 +43,9 @@ class RacingEnv(gym.Env):
         # *============ params ============
         self.max_steps = config.MAX_STEPS
         self.step_count = 0
-        self.global_step = 0
         self.off_ground_count = 0
+        self.lap_count = 0
+        self.total_lap_count = 0
 
         self.max_torque = config.CAR["max_torque"]
         self.max_brake_force = config.CAR["max_brake_force"]
@@ -53,6 +54,7 @@ class RacingEnv(gym.Env):
         self.lap_started = False
         self.start_time = time.time()
         self.goal_prev_inside = False
+        self.left_start = False
         # *================================
 
         self._setup_env(car_pos, car_orn)
@@ -200,19 +202,22 @@ class RacingEnv(gym.Env):
         vel = obs[3:6]
         speed = np.linalg.norm(vel)
 
-        speed_reward = max(speed, 0.0) * 0.1
+        speed_reward = max(speed, 0.0) * 0.2
 
         sensor_hits = self.car.checkHit(self.obj_dict)
-        sensor_reward = np.mean([np.mean(s) for s in sensor_hits]) * 0.5
+        sensor_reward = np.mean([np.mean(s) for s in sensor_hits]) * 0.4
 
-        p = self.global_step / config.TOTAL_TIME_STEP
-        s = 1 / (1 + math.exp(-11 * (p - 0.5)))
-        steer_weight = 0.3 * (1 - s)
+        p = self.total_lap_count / config.TOTAL_TIME_STEP
+        s = 1 / (1 + math.exp(-10 * (p - 0.4)))
+        steer_weight = 0.6 * (1 - s)
         steer_reward = -steer_weight * abs(steer)
 
         reward = speed_reward + sensor_reward + steer_reward
 
         return reward
+    
+    def _calc_progress(self):
+        pass
 
     def _check_terminate(self):
         terminate = False
@@ -242,6 +247,23 @@ class RacingEnv(gym.Env):
             cameraTargetPosition=pos
         )
 
+    def lap_checker(self):
+        inside = self._accross_goal()
+
+        lap_completed = False
+
+        if not inside:
+            self.left_start = True
+
+        if inside and not self.goal_prev_inside:
+            if self.left_start:
+                self.lap_count += 1
+                self.total_lap_count += 1
+                lap_completed = True
+
+        self.goal_prev_inside = inside
+        return lap_completed
+
     def reset(self, seed=None, options=None):
         init_pos = [
             config.CAR["base_x"],
@@ -257,6 +279,8 @@ class RacingEnv(gym.Env):
         self.off_ground_count = 0
 
         self.goal_prev_inside = False
+        self.left_start = False
+        self.lap_count
         self.start_time = time.time()
 
         obs = self._get_obs()
@@ -268,7 +292,10 @@ class RacingEnv(gym.Env):
 
     def step(self, action):
         self.step_count += 1
-        self.global_step += 1
+
+        terminated = False
+        truncated = False
+        info = {}
 
         throttle, brake, steer = action
 
@@ -313,22 +340,21 @@ class RacingEnv(gym.Env):
         off_all_wheels = self.car.is_all_wheels_off(self.track_id)
         self.off_ground_count += 1 if off_all_wheels else 0
 
-        terminated = (self.off_ground_count > 50)
-        truncated = self.step_count >= self.max_steps
+        course_out = self.off_ground_count > 50
+        lap_completed = self.lap_checker()
+
+        terminated = course_out or lap_completed
 
         if terminated:
-            reward -= 10.0
-            print("# terminated")
-
-        if truncated:
-            print("# truncated")
+            reward -= 50.0
+            # print("# terminated")
 
         if self.render:
             if not self.car.is_all_wheels_off(self.track_id):
                 self._update_cam_pos()
                 # self.car.draw_car_info(throttle, brake, steer)
 
-        return obs, reward, terminated, truncated, {}
+        return obs, reward, terminated, truncated, info
 
     def close(self):
         if self.engine_id is not None:

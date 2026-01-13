@@ -3,7 +3,7 @@ import numpy as np
 RENDER = False
 MAX_STEPS = 300_000
 FINAL_STEP = 3_000
-TOTAL_TIME_STEP = 1_000_000
+TOTAL_TIME_STEP = 10_000
 N_SPLIT = 100
 SAVE_FREQ = TOTAL_TIME_STEP // N_SPLIT
 GRAVITY = [0, 0, -9.8]
@@ -38,3 +38,4 @@ FRICTION = {
     "rolling": 0.01,
     "spining": 0.01
 }
+ 
