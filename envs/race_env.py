@@ -219,10 +219,12 @@ class RacingEnv(gym.Env):
 
         off_count = 0
         wheel_contacts = self.car.get_wheel_contact(self.track_id)
+        print(f"Wheel contacts: {wheel_contacts}")
 
         for wheel in wheel_contacts:
             if not wheel:
                 off_count += 1
+                print("# counted")
 
         if off_count > 2:
             terminate = True
@@ -311,11 +313,15 @@ class RacingEnv(gym.Env):
         off_all_wheels = self.car.is_all_wheels_off(self.track_id)
         self.off_ground_count += 1 if off_all_wheels else 0
 
-        terminated = self._check_terminate() or (self.off_ground_count > 3)
+        terminated = (self.off_ground_count > 50)
         truncated = self.step_count >= self.max_steps
 
         if terminated:
             reward -= 10.0
+            print("# terminated")
+
+        if truncated:
+            print("# truncated")
 
         if self.render:
             if not self.car.is_all_wheels_off(self.track_id):

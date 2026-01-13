@@ -1,7 +1,8 @@
 import numpy as np
 
 RENDER = False
-MAX_STEPS = 3_000
+MAX_STEPS = 300_000
+FINAL_STEP = 3_000
 TOTAL_TIME_STEP = 1_000_000
 N_SPLIT = 100
 SAVE_FREQ = TOTAL_TIME_STEP // N_SPLIT
@@ -31,7 +32,7 @@ CAR = {
 
 FRICTION = {
     "body": 1.0,
-    "track": 1.5,
+    "track": 2.5,
     "runoff": 1.0,
     "lateral": 2.0,
     "rolling": 0.01,
