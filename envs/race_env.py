@@ -209,29 +209,12 @@ class RacingEnv(gym.Env):
 
         progress = np.clip(self.lap_count / config.TARGET_LAP, 0.0, 1.0)
         s = 1 / (1 + math.exp(-11 * (progress - 0.5)))
-        steer_weight = 0.6 * (1 - s)
+        steer_weight = 0.4 * (1 - s)
         steer_reward = -steer_weight * abs(steer)
 
         reward = speed_reward + sensor_reward + steer_reward
 
         return reward
-
-    def _check_terminate(self):
-        terminate = False
-
-        off_count = 0
-        wheel_contacts = self.car.get_wheel_contact(self.track_id)
-        print(f"Wheel contacts: {wheel_contacts}")
-
-        for wheel in wheel_contacts:
-            if not wheel:
-                off_count += 1
-                print("# counted")
-
-        if off_count > 2:
-            terminate = True
-
-        return terminate
 
     def _update_cam_pos(self):
         pos, orn = p.getBasePositionAndOrientation(self.car.car_id)
@@ -333,15 +316,22 @@ class RacingEnv(gym.Env):
         #       f"goal_prev_inside : {self.goal_prev_inside}")
 
         obs = self._get_obs()
+        print(f"obs: {len(obs)}")
         reward = self._calc_reward(obs, steer)
 
         off_all_wheels = self.car.is_all_wheels_off(self.track_id)
-        self.off_ground_count += 1 if off_all_wheels else 0
+        if off_all_wheels:
+            self.off_ground_count += 1
+        else:
+            self.off_ground_count = 0
 
-        course_out = self.off_ground_count > 50
+        course_out = self.off_ground_count > 10
         lap_completed = self.lap_checker()
 
-        terminated = course_out or lap_completed
+        if lap_completed:
+            reward += 100.0
+
+        terminated = course_out
 
         if terminated:
             reward -= 50.0
