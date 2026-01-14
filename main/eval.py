@@ -24,9 +24,9 @@ def main():
     env = RacingEnv(car_pos, car_orn, render=True)
     env = Monitor(env)
 
-    run_name = "run_20260113_140416"
-    model_path = PROJECT_ROOT / "experiments" / run_name \
-        / "best_model" / "best_model"
+    # run_name = "run_20260114_184917"
+    model_path = PROJECT_ROOT / "models" \
+        / "model_2026-01-14_18-57"
 
     model = PPO.load(
         model_path,

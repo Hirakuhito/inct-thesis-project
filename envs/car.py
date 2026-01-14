@@ -87,6 +87,14 @@ class Car:
                 spiningFriction=config.FRICTION["spining"]
             )
 
+            p.setJointMotorControl2(
+                self.car_id,
+                j,
+                controlMode=p.VELOCITY_CONTROL,
+                targetVelocity=0,
+                force=0,  # ← これが超重要
+            )
+
     def _get_joints_info(self):
         for i in range(p.getNumJoints(self.car_id)):
             info = p.getJointInfo(self.car_id, i)
@@ -260,10 +268,20 @@ class Car:
         # brake_force = brake * max_brake
 
         for j in self.wheel_joints:
+            wheel_state = p.getJointState(self.car_id, j)
+            wheel_vel = wheel_state[1]  # rad/s
+
+            drive_torque = throttle * max_torque
+
+            brake_torque = 0.0
+            if abs(wheel_vel) > 1e-2:
+                brake_torque = brake * max_brake * (-np.sign(wheel_vel))
+
+            total_torque = drive_torque + brake_torque
+
             p.setJointMotorControl2(
                 self.car_id,
                 j,
-                p.VELOCITY_CONTROL,
-                targetVelocity=300,
-                force=-max_torque
+                p.TORQUE_CONTROL,
+                force=total_torque
             )

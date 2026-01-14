@@ -175,7 +175,7 @@ class RacingEnv(gym.Env):
              sensor_flat
         ])
 
-        return obs.astype(np.float32)
+        return obs.astype(np.float32), sensor
 
     def _accross_goal(self):
         pos, orn = p.getBasePositionAndOrientation(self.car.car_id)
@@ -198,13 +198,13 @@ class RacingEnv(gym.Env):
 
         return inside
 
-    def _calc_reward(self, obs, steer):
+    def _calc_reward(self, obs, steer, sensor):
         vel = obs[3:6]
         speed = np.linalg.norm(vel)
 
         speed_reward = max(speed, 0.0) * 0.2
 
-        sensor_hits = self.car.checkHit(self.obj_dict)
+        sensor_hits = sensor
         sensor_reward = np.mean([np.mean(s) for s in sensor_hits]) * 0.4
 
         progress = np.clip(self.lap_count / config.TARGET_LAP, 0.0, 1.0)
@@ -264,7 +264,7 @@ class RacingEnv(gym.Env):
         self.lap_count = 0
         self.start_time = time.time()
 
-        obs = self._get_obs()
+        obs, _ = self._get_obs()
 
         for i in range(50):
             p.stepSimulation()
@@ -315,13 +315,13 @@ class RacingEnv(gym.Env):
         # print(f"goal_inside : {goal_inside}, "
         #       f"goal_prev_inside : {self.goal_prev_inside}")
 
-        obs = self._get_obs()
-        print(f"obs: {len(obs)}")
-        reward = self._calc_reward(obs, steer)
+        obs, sensor = self._get_obs()
+        reward = self._calc_reward(obs, steer, sensor)
 
         off_all_wheels = self.car.is_all_wheels_off(self.track_id)
         if off_all_wheels:
             self.off_ground_count += 1
+            print(f"off all wheels:{off_all_wheels}")
         else:
             self.off_ground_count = 0
 
@@ -330,12 +330,17 @@ class RacingEnv(gym.Env):
 
         if lap_completed:
             reward += 100.0
+            print(f"# Lap completed !  by {self.step_count} steps")
 
-        terminated = course_out
+        terminated = course_out or lap_completed
 
         if terminated:
             reward -= 50.0
-            # print("# terminated")
+            print(f"# terminated: {self.off_ground_count}")
+
+        if self.step_count >= self.max_steps:
+            truncated = True
+            terminated = True
 
         if self.render:
             if not self.car.is_all_wheels_off(self.track_id):

@@ -2,6 +2,7 @@ from datetime import datetime
 from pathlib import Path
 
 import pybullet as p
+from gymnasium.wrappers import TimeLimit
 from stable_baselines3 import PPO
 from stable_baselines3.common.callbacks import CheckpointCallback, EvalCallback
 from stable_baselines3.common.monitor import Monitor
@@ -25,14 +26,20 @@ def main():
     ]
     car_orn = p.getQuaternionFromEuler([0, 0, 0])
     env = RacingEnv(car_pos, car_orn, render=config.RENDER)
+    env = TimeLimit(env, max_episode_steps=1000)
     env = Monitor(env)
+
     eval_env = RacingEnv(car_pos, car_orn, render=False)
+    eval_env = TimeLimit(eval_env, max_episode_steps=5000)
 
     model = PPO(
         "MlpPolicy",
         env,
+        n_steps=512,
+        batch_size=64,
+        n_epochs=5,
         verbose=1,
-        tensorboard_log=str(tb_log_dir)
+        tensorboard_log=str(tb_log_dir),
     )
 
     checkpoint_cb = CheckpointCallback(
@@ -45,7 +52,8 @@ def main():
         eval_env,
         best_model_save_path=str(best_model_dir),
         log_path=str(eval_log_dir),
-        eval_freq=config.SAVE_FREQ,
+        eval_freq=config.SAVE_FREQ * 5,
+        n_eval_episodes=1,
         deterministic=True
     )
 
