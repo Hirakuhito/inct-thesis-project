@@ -207,17 +207,14 @@ class RacingEnv(gym.Env):
         sensor_hits = self.car.checkHit(self.obj_dict)
         sensor_reward = np.mean([np.mean(s) for s in sensor_hits]) * 0.4
 
-        p = self.total_lap_count / config.TOTAL_TIME_STEP
-        s = 1 / (1 + math.exp(-10 * (p - 0.4)))
+        progress = np.clip(self.lap_count / config.TARGET_LAP, 0.0, 1.0)
+        s = 1 / (1 + math.exp(-11 * (progress - 0.5)))
         steer_weight = 0.6 * (1 - s)
         steer_reward = -steer_weight * abs(steer)
 
         reward = speed_reward + sensor_reward + steer_reward
 
         return reward
-    
-    def _calc_progress(self):
-        pass
 
     def _check_terminate(self):
         terminate = False
