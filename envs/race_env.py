@@ -257,6 +257,7 @@ class RacingEnv(gym.Env):
                 self.lap_count += 1
                 self.total_lap_count += 1
                 lap_completed = True
+                print("# Lap Checked")
 
         self.goal_prev_inside = inside
         return lap_completed
@@ -277,7 +278,7 @@ class RacingEnv(gym.Env):
 
         self.goal_prev_inside = False
         self.left_start = False
-        self.lap_count
+        self.lap_count = 0
         self.start_time = time.time()
 
         obs = self._get_obs()
