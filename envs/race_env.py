@@ -212,7 +212,7 @@ class RacingEnv(gym.Env):
         runoff_count = np.sum(sensor_hits == -1.0)
         total_count = sensor_hits
         runoff_ratio = runoff_count / total_count
-        
+        sensor_reward = 1 - runoff_ratio
 
         progress = np.clip(self.lap_count / config.TARGET_LAP, 0.0, 1.0)
         s = 1 / (1 + math.exp(-11 * (progress - 0.5)))
