@@ -26,7 +26,7 @@ def main():
 
     # run_name = "run_20260114_184917"
     model_path = PROJECT_ROOT / "models" \
-        / "model_2026-01-14_18-57"
+        / "model_2026-01-15_09-43.zip"
 
     model = PPO.load(
         model_path,

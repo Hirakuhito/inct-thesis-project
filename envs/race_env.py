@@ -41,7 +41,10 @@ class RacingEnv(gym.Env):
         self.runoff_name = config.CIRCUIT["runoff"]
 
         # *============ params ============
-        self.max_steps = config.MAX_STEPS
+        self.time_step = 1. / 240.
+        self.sim_time = 0.0
+        self.max_time = config.MAX_TIME
+
         self.step_count = 0
         self.off_ground_count = 0
         self.lap_count = 0
@@ -209,7 +212,8 @@ class RacingEnv(gym.Env):
 
         progress = np.clip(self.lap_count / config.TARGET_LAP, 0.0, 1.0)
         s = 1 / (1 + math.exp(-11 * (progress - 0.5)))
-        steer_weight = 0.4 * (1 - s)
+        print(f"progress : {progress}, s : {s}")
+        steer_weight = 0.6 * (1 - s)
         steer_reward = -steer_weight * abs(steer)
 
         reward = speed_reward + sensor_reward + steer_reward
@@ -258,6 +262,7 @@ class RacingEnv(gym.Env):
         self.car.reset(init_pos, init_orn)
         self.step_count = 0
         self.off_ground_count = 0
+        self.sim_time = 0.0
 
         self.goal_prev_inside = False
         self.left_start = False
@@ -290,7 +295,7 @@ class RacingEnv(gym.Env):
         )
 
         p.stepSimulation()
-
+        self.sim_time += self.time_step
         # print(f"hit_data : {self.car.checkHit(self.obj_dict)}")
 
         goal_inside = self._accross_goal()
@@ -321,11 +326,10 @@ class RacingEnv(gym.Env):
         off_all_wheels = self.car.is_all_wheels_off(self.track_id)
         if off_all_wheels:
             self.off_ground_count += 1
-            print(f"off all wheels:{off_all_wheels}")
         else:
             self.off_ground_count = 0
 
-        course_out = self.off_ground_count > 10
+        course_out = self.off_ground_count > 50
         lap_completed = self.lap_checker()
 
         if lap_completed:
@@ -338,9 +342,9 @@ class RacingEnv(gym.Env):
             reward -= 50.0
             print(f"# terminated: {self.off_ground_count}")
 
-        if self.step_count >= self.max_steps:
+        if self.sim_time >= self.max_time:
             truncated = True
-            terminated = True
+            print(f"# truncated: {self.sim_time}")
 
         if self.render:
             if not self.car.is_all_wheels_off(self.track_id):
