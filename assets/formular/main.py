@@ -13,7 +13,6 @@ def main():
     p.setTimeStep(1.0 / 240.0)
     p.setGravity(0, 0, -9.8)
 
-
     startPos=[0, 0, 1]
     startOrient=p.getQuaternionFromEuler([0, 0, 0])
 

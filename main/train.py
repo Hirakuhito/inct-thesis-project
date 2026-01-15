@@ -31,6 +31,7 @@ def main():
 
     eval_env = RacingEnv(car_pos, car_orn, render=False)
     eval_env = TimeLimit(eval_env, max_episode_steps=5000)
+    eval_env = Monitor(eval_env)
 
     model = PPO(
         "MlpPolicy",
