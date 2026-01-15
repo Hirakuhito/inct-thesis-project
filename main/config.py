@@ -28,8 +28,8 @@ CAR = {
     "base_y": -0.6,
     "base_z": 0.1,
     "max_engine_force": 1200.0,
-    "max_torque": 50.0,
-    "max_brake_force": 100.0,
+    "max_torque": 500.0,
+    "max_brake_force": 300.0,
     "max_steer_angle": np.pi / 3
 }
 

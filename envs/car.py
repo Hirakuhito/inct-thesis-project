@@ -100,6 +100,8 @@ class Car:
             info = p.getJointInfo(self.car_id, i)
             name = info[1].decode("utf-8")
 
+            print(f"info : {info}")
+
             if "steer" in name:
                 self.steer_joints.append(i)
             if "wheel" in name:
@@ -274,14 +276,16 @@ class Car:
             drive_torque = throttle * max_torque
 
             brake_torque = 0.0
-            if abs(wheel_vel) > 1e-2:
+            if abs(wheel_vel) > 1e-2 and abs(drive_torque) > 1e-2:
                 brake_torque = brake * max_brake * (-np.sign(wheel_vel))
 
             total_torque = drive_torque + brake_torque
+            # print(f"total torque : {drive_torque} - "
+            #       f"{brake_torque} = {total_torque}")
 
             p.setJointMotorControl2(
                 self.car_id,
                 j,
                 p.TORQUE_CONTROL,
-                force=total_torque
+                force=-total_torque
             )
