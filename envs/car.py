@@ -17,11 +17,12 @@ class Car:
 
         self.car_id = None
 
-        self.steer_joints = []
+        self.steer_joints = [0, 2]
         self.wheel_joints = []
 
         self._setup_car()
         self._get_joints_info()
+        self._set_wheel_dynamics()
 
         self.sensor_f = {
             "origin": np.array([0.0, 0.5, 0.0]),
@@ -62,6 +63,13 @@ class Car:
             self.sensor_b
         ]
 
+        self.wheel_sign = {
+            1: 0,  # front right
+            3: 0,  # front left
+            5: -1,  # rear right
+            7: -1,  # rear left
+        }
+
     def _setup_car(self):
         car_path = str(PROJECT_ROOT / config.CAR["path"] / config.CAR["urdf"])
 
@@ -78,21 +86,23 @@ class Car:
             lateralFriction=config.FRICTION["body"]
         )
 
+    def _set_wheel_dynamics(self):
         for j in self.wheel_joints:
             p.changeDynamics(
                 self.car_id,
                 j,
                 lateralFriction=config.FRICTION["lateral"],
                 rollingFriction=config.FRICTION["rolling"],
-                spiningFriction=config.FRICTION["spining"]
+                spinningFriction=config.FRICTION["spining"],
             )
 
+        for j in self.wheel_joints:
             p.setJointMotorControl2(
                 self.car_id,
                 j,
                 controlMode=p.VELOCITY_CONTROL,
                 targetVelocity=0,
-                force=0,  # ← これが超重要
+                force=0
             )
 
     def _get_joints_info(self):
@@ -100,13 +110,11 @@ class Car:
             info = p.getJointInfo(self.car_id, i)
             name = info[1].decode("utf-8")
 
-            print(f"info : {info}")
+            # print(f"info : {info}")
 
-            if "steer" in name:
-                self.steer_joints.append(i)
             if "wheel" in name:
                 self.wheel_joints.append(i)
-
+            print(f"joint[{i}]: {info[13]}")
         pprint.pprint(f"steer joints index : {self.steer_joints}")
         pprint.pprint(f"wheel joints index : {self.wheel_joints}")
 
@@ -266,26 +274,26 @@ class Car:
                 targetPosition=steer_angle
             )
 
-        # drive_force = throttle * max_torque
-        # brake_force = brake * max_brake
-
         for j in self.wheel_joints:
             wheel_state = p.getJointState(self.car_id, j)
-            wheel_vel = wheel_state[1]  # rad/s
+            wheel_vel = wheel_state[1] * self.wheel_sign[j]
 
             drive_torque = throttle * max_torque
 
             brake_torque = 0.0
-            if abs(wheel_vel) > 1e-2 and abs(drive_torque) > 1e-2:
-                brake_torque = brake * max_brake * (-np.sign(wheel_vel))
+            if abs(wheel_vel) > 1e-2 and brake > 1e-3:
+                brake_torque = brake * max_brake * (np.sign(wheel_vel))
 
             total_torque = drive_torque + brake_torque
-            # print(f"total torque : {drive_torque} - "
-            #       f"{brake_torque} = {total_torque}")
+            force = self.wheel_sign[j] * total_torque
+            # print(
+            #     f"total torque[{j}] : {drive_torque:5.2f} - "
+            #     f"{brake_torque:5.2f} = {total_torque:5.2f}"
+            # )
 
             p.setJointMotorControl2(
                 self.car_id,
                 j,
                 p.TORQUE_CONTROL,
-                force=-total_torque
+                force=force
             )

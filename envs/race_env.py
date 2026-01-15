@@ -205,7 +205,7 @@ class RacingEnv(gym.Env):
         vel = obs[3:6]
         speed = np.linalg.norm(vel)
 
-        speed_reward = max(speed, 0.0) * 0.2
+        speed_reward = max(speed, 0.0) * 0.6
 
         sensor_hits = sensor
         sensor_reward = np.mean([np.mean(s) for s in sensor_hits]) * 0.4
@@ -213,7 +213,7 @@ class RacingEnv(gym.Env):
         progress = np.clip(self.lap_count / config.TARGET_LAP, 0.0, 1.0)
         s = 1 / (1 + math.exp(-11 * (progress - 0.5)))
         # print(f"progress : {progress}, s : {s}")
-        steer_weight = 0.6 * (1 - s)
+        steer_weight = 0.5 * (1 - s)
         steer_reward = -steer_weight * abs(steer)
 
         reward = speed_reward + sensor_reward + steer_reward
@@ -277,8 +277,6 @@ class RacingEnv(gym.Env):
         return obs, {}
 
     def step(self, action):
-        self.step_count += 1
-
         terminated = False
         truncated = False
         info = {}
@@ -330,6 +328,7 @@ class RacingEnv(gym.Env):
             self.off_ground_count = 0
 
         course_out = self.off_ground_count > 50
+        # course_out = False
         lap_completed = self.lap_checker()
 
         if lap_completed:
@@ -348,6 +347,7 @@ class RacingEnv(gym.Env):
 
         if self.render:
             if not self.car.is_all_wheels_off(self.track_id):
+                print(f"sim time: {self.sim_time}")
                 self._update_cam_pos()
                 # self.car.draw_car_info(throttle, brake, steer)
 
