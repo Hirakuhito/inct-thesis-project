@@ -208,16 +208,16 @@ class RacingEnv(gym.Env):
         speed_reward = max(speed, 0.0) * 0.8
         idle_penalty = -0.5 if speed < 0.2 else 0.0
 
-        sensor_hits = np.array(sensor).flatten()
+        sensor_hits = np.concatenate(sensor)
         runoff_count = np.sum(sensor_hits == -1.0)
-        total_count = sensor_hits
+        total_count = sensor_hits.size
         runoff_ratio = runoff_count / total_count
         sensor_reward = 1 - runoff_ratio
 
         progress = np.clip(self.lap_count / config.TARGET_LAP, 0.0, 1.0)
         s = 1 / (1 + math.exp(-11 * (progress - 0.5)))
         # print(f"progress : {progress}, s : {s}")
-        steer_weight = 0.3 * (1 - s)
+        steer_weight = 0.4 * (1 - s)
         steer_penalty = -steer_weight * abs(steer)
 
         reward = (
@@ -226,7 +226,6 @@ class RacingEnv(gym.Env):
             + steer_penalty
             + idle_penalty
         )
-        print(f"reward = {reward:5.2f}")
 
         return reward
 
@@ -362,7 +361,7 @@ class RacingEnv(gym.Env):
             if not self.car.is_all_wheels_off(self.track_id):
                 print(f"sim time: {self.sim_time:2.2f}")
                 self._update_cam_pos()
-                self.car.draw_car_info(throttle, brake, steer)
+                # self.car.draw_car_info(throttle, brake, steer)
 
         return obs, reward, terminated, truncated, info
 
