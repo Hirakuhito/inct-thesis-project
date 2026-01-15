@@ -339,11 +339,11 @@ class RacingEnv(gym.Env):
 
         if terminated:
             reward -= 50.0
-            print(f"# terminated: {self.off_ground_count}")
+            print("# terminated")
 
         if self.sim_time >= self.max_time:
             truncated = True
-            print(f"# truncated: {self.sim_time}")
+            print("# truncated")
 
         if self.render:
             if not self.car.is_all_wheels_off(self.track_id):
