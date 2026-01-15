@@ -2,9 +2,9 @@ import numpy as np
 
 RENDER = False
 
-MAX_TIME = 30
-TOTAL_TIME_STEP = 500_000
-N_SPLIT = 100
+MAX_TIME = 20
+TOTAL_TIME_STEP = 1_000_000
+N_SPLIT = 1000
 SAVE_FREQ = TOTAL_TIME_STEP // N_SPLIT
 
 TARGET_LAP = 10
@@ -28,8 +28,8 @@ CAR = {
     "base_y": -0.6,
     "base_z": 0.1,
     "max_engine_force": 1200.0,
-    "max_torque": 300.0,
-    "max_brake_force": 300.0,
+    "max_torque": 200.0,
+    "max_brake_force": 1000.0,
     "max_steer_angle": np.pi / 3
 }
 
