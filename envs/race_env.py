@@ -212,12 +212,12 @@ class RacingEnv(gym.Env):
         runoff_count = np.sum(sensor_hits == -1.0)
         total_count = sensor_hits.size
         runoff_ratio = runoff_count / total_count
-        sensor_reward = (1 - runoff_ratio) * 2.0
+        sensor_penalty = (1 - runoff_ratio)
 
         progress = np.clip(self.lap_count / config.TARGET_LAP, 0.0, 1.0)
         s = 1 / (1 + math.exp(-11 * (progress - 0.5)))
         # print(f"progress : {progress}, s : {s}")
-        steer_weight = 0.1 * s
+        steer_weight = 0.2 + 0.1 * s
         steer_penalty = -steer_weight * abs(steer)
 
         wheel_contact = self.car.get_wheel_contact(self.track_id)
@@ -228,11 +228,11 @@ class RacingEnv(gym.Env):
                 wheel_contact_count += 1
 
         wheel_contact_ratio = wheel_contact_count / len(wheel_contact)
-        wheel_penalty = 1 - wheel_contact_ratio
+        wheel_penalty = (1 - wheel_contact_ratio)
 
         reward = (
             speed_reward
-            + sensor_reward
+            + sensor_penalty
             + steer_penalty
             + idle_penalty
             + wheel_penalty
