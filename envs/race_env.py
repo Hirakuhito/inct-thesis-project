@@ -228,7 +228,8 @@ class RacingEnv(gym.Env):
                 wheel_contact_count += 1
 
         wheel_contact_ratio = wheel_contact_count / len(wheel_contact)
-        wheel_penalty = (1 - wheel_contact_ratio)
+        wheel_penalty = (1 - wheel_contact_ratio) * 2.0
+        print(f"wheel_penalty : {wheel_penalty}")
 
         reward = (
             speed_reward
