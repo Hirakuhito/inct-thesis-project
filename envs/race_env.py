@@ -204,9 +204,10 @@ class RacingEnv(gym.Env):
     def _calc_reward(self, obs, steer, sensor):
         vel = obs[3:6]
         speed = np.linalg.norm(vel)
+        print(f"speed : {speed:2.2f}")
 
         speed_reward = max(speed, 0.0) * 0.8
-        idle_penalty = -0.5 if speed < 0.2 else 0.0
+        idle_penalty = -2 if speed < 0.2 else 0.0
 
         sensor_hits = np.concatenate(sensor)
         runoff_count = np.sum(sensor_hits == -1.0)
@@ -228,8 +229,8 @@ class RacingEnv(gym.Env):
                 wheel_contact_count += 1
 
         wheel_contact_ratio = wheel_contact_count / len(wheel_contact)
-        wheel_penalty = (1 - wheel_contact_ratio) * 2.0
-        print(f"wheel_penalty : {wheel_penalty}")
+        wheel_penalty = -(1 - wheel_contact_ratio) * 5.0
+        # print(f"wheel_penalty : {wheel_penalty}")
 
         reward = (
             speed_reward
@@ -238,6 +239,7 @@ class RacingEnv(gym.Env):
             + idle_penalty
             + wheel_penalty
         )
+        print(reward)
 
         return reward
 
@@ -330,7 +332,7 @@ class RacingEnv(gym.Env):
             else:
                 lap_time = now - self.start_time
                 if self.render:
-                    print(f"Lap time : {lap_time}")
+                    print(f"Lap time : {lap_time:.2f}")
                 self.start_time = now
 
         elif not goal_inside and self.goal_prev_inside:
@@ -371,8 +373,8 @@ class RacingEnv(gym.Env):
 
         if self.render:
             if not self.car.is_all_wheels_off(self.track_id):
-                print(f"sim time: {self.sim_time:2.2f}")
-                # self._update_cam_pos()
+                # print(f"sim time: {self.sim_time:2.2f}")
+                self._update_cam_pos()
                 # self.car.draw_car_info(throttle, brake, steer)
 
         return obs, reward, terminated, truncated, info
