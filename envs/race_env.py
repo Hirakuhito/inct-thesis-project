@@ -231,10 +231,11 @@ class RacingEnv(gym.Env):
         speed = np.linalg.norm(car_vel)
 
         speed_penalty = 0.0
-        if speed < 0.5:
-            speed_penalty -= 1
-
-        car_vel_unit = car_vel / speed
+        if speed < 0.2:
+            speed_penalty = -0.2
+            car_vel_unit = np.zeros_like(car_vel)
+        else:
+            car_vel_unit = car_vel / speed
         tangent_vec = np.array(self.track_normal_vec[nn_idx]) * -1
         dir_dot = np.dot(tangent_vec, car_vel_unit)
 
@@ -244,16 +245,16 @@ class RacingEnv(gym.Env):
         dir_reward = 0.0
         forward_speed_reward = 0.0
         if dir_dot <= 0 or forward_speed <= 0:
-            dot_speed_penalty -= 50.0
+            dot_speed_penalty = dir_dot * 5.0
         else:
             dir_reward += dir_dot
-            forward_speed_reward += forward_speed
+            forward_speed_reward = max(0.0, forward_speed) * 2.0
 
         wheel_contact_penalty = 0.0
         wheel_contacts = self.car.get_wheel_contact(self.track_id)
         for c in wheel_contacts:
             if not c:
-                wheel_contact_penalty -= 5
+                wheel_contact_penalty -= 1.0
 
         reward = (
             speed_penalty
@@ -262,14 +263,12 @@ class RacingEnv(gym.Env):
             + forward_speed_reward
             + wheel_contact_penalty
         )
-        # print((
-        #     f"speed_penalty : {speed_penalty:.2f}, "
-        #     f"dot_speed_penalty : {dot_speed_penalty:.2f}, "
-        #     f"dir_reward : {dir_reward:.2f}, "
-        #     f"forward_speed_reward : {forward_speed_reward:.2f}, "
-        #     f"wheel_contact_penalty : {wheel_contact_penalty:.2f}, "
-        #     f"reward : {reward:3.2f}"
-        # ))
+        print((
+            f"speed={speed:.2f}, "
+            f"dir_dot={dir_dot:.2f}, "
+            f"fwd={forward_speed:.2f}, "
+            f"reward={reward:.2f}"
+        ))
 
         return reward
 
