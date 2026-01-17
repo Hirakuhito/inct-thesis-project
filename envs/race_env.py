@@ -263,14 +263,14 @@ class RacingEnv(gym.Env):
             + forward_speed_reward
             + wheel_contact_penalty
         )
-        print((
-            f"speed_penalty : {speed_penalty:.2f}, "
-            f"dot_speed_penalty : {dot_speed_penalty:.2f}, "
-            f"dir_reward : {dir_reward:.2f}, "
-            f"forward_speed_reward : {forward_speed_reward:.2f}, "
-            f"wheel_contact_penalty : {wheel_contact_penalty:.2f}, "
-            f"reward : {reward:3.2f}"
-        ))
+        # print((
+        #     f"speed_penalty : {speed_penalty:.2f}, "
+        #     f"dot_speed_penalty : {dot_speed_penalty:.2f}, "
+        #     f"dir_reward : {dir_reward:.2f}, "
+        #     f"forward_speed_reward : {forward_speed_reward:.2f}, "
+        #     f"wheel_contact_penalty : {wheel_contact_penalty:.2f}, "
+        #     f"reward : {reward:3.2f}"
+        # ))
 
         return reward
 
