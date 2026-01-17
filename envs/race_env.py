@@ -27,7 +27,7 @@ class RacingEnv(gym.Env):
         self.observation_space = spaces.Box(
             low=-np.inf,
             high=np.inf,
-            shape=(24, ),
+            shape=(21, ),
             dtype=np.float32
         )
 
@@ -185,12 +185,11 @@ class RacingEnv(gym.Env):
         sensor_flat = np.concatenate(sensor)
 
         obs = np.concatenate([
-             np.array(pos),
              np.array(vel),
              sensor_flat
         ])
 
-        return obs.astype(np.float32), sensor
+        return obs.astype(np.float32), sensor, pos
 
     def _accross_goal(self):
         pos, orn = p.getBasePositionAndOrientation(self.car.car_id)
@@ -323,7 +322,7 @@ class RacingEnv(gym.Env):
         self.lap_count = 0
         self.start_time = time.time()
 
-        obs, _ = self._get_obs()
+        obs, _, _ = self._get_obs()
 
         for i in range(50):
             p.stepSimulation()
@@ -372,7 +371,7 @@ class RacingEnv(gym.Env):
         # print(f"goal_inside : {goal_inside}, "
         #       f"goal_prev_inside : {self.goal_prev_inside}")
 
-        obs, sensor = self._get_obs()
+        obs, sensor, _ = self._get_obs()
         reward = self._calc_reward(obs, steer, sensor)
 
         off_all_wheels = self.car.is_all_wheels_off(self.track_id)
