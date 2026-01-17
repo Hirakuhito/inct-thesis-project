@@ -1,4 +1,3 @@
-import math
 import time
 from pathlib import Path
 
@@ -8,6 +7,8 @@ import pybullet as p
 import pybullet_data as pd
 from gymnasium import spaces
 
+from assets.trackMaker.track_info_generator import (gen_center_point,
+                                                    gen_mesh_data)
 from envs.car import Car
 from main import config
 
@@ -69,6 +70,17 @@ class RacingEnv(gym.Env):
 
         track_file_path = str(circuit_data_path / (self.track_name + ".obj"))
         runoff_file_path = str(circuit_data_path / (self.runoff_name + ".obj"))
+
+        self.center_point = gen_center_point(
+            config.CIRCUIT["straight"],
+            config.CIRCUIT["radius"]
+        )
+        _, self.track_normal_vec = gen_mesh_data(
+            self.center_point,
+            config.CIRCUIT["width"],
+            config.CIRCUIT["radius"],
+            in_out="in"
+        )
 
         self.close()
         self.engine_id = p.connect(
@@ -201,47 +213,64 @@ class RacingEnv(gym.Env):
 
         return inside
 
+    def get_nn_index(self, obs):
+        points = self.center_point
+        car_pos = np.array(obs[:2])
+
+        diff = points - car_pos
+        dists = np.linalg.norm(diff, axis=1)
+
+        idx = int(np.argmin(dists))
+
+        return idx
+
     def _calc_reward(self, obs, steer, sensor):
-        vel = obs[3:6]
-        speed = np.linalg.norm(vel)
-        # print(f"speed : {speed:2.2f}")
+        reward = 0.0
+        nn_idx = self.get_nn_index(obs)
 
-        speed_reward = max(speed, 0.0) * 0.8
-        idle_penalty = -1.5 if speed < 0.2 else 0.0
+        car_vel = np.array(obs[3:5])
+        speed = np.linalg.norm(car_vel)
 
-        sensor_hits = np.concatenate(sensor)
-        runoff_count = np.sum(sensor_hits == -1.0)
-        total_count = sensor_hits.size
-        runoff_ratio = runoff_count / total_count
-        sensor_penalty = -(1 - runoff_ratio)
+        speed_penalty = 0.0
+        if speed < 0.5:
+            speed_penalty -= 1
 
-        progress = np.clip(self.lap_count / config.TARGET_LAP, 0.0, 1.0)
-        s = 1 / (1 + math.exp(-11 * (progress - 0.5)))
-        # print(f"progress : {progress}, s : {s}")
-        steer_weight = 0.1 + 0.1 * s
-        steer_penalty = -steer_weight * abs(steer)
+        car_vel_unit = car_vel / speed
+        tangent_vec = np.array(self.track_normal_vec[nn_idx]) * -1
+        dir_dot = np.dot(tangent_vec, car_vel_unit)
 
-        wheel_contact = self.car.get_wheel_contact(self.track_id)
-        # print(f"# wheel_contact: {wheel_contact}")
-        wheel_contact_count = 0.0
-        for w in wheel_contact:
-            if w:
-                wheel_contact_count += 1
+        forward_speed = np.dot(tangent_vec, car_vel)
 
-        wheel_contact_ratio = wheel_contact_count / len(wheel_contact)
-        wheel_penalty = -(1 - wheel_contact_ratio) * 5.0
-        # print(f"wheel_penalty : {wheel_penalty}")
+        dot_speed_penalty = 0.0
+        dir_reward = 0.0
+        forward_speed_reward = 0.0
+        if dir_dot <= 0 or forward_speed <= 0:
+            dot_speed_penalty -= 50.0
+        else:
+            dir_reward += dir_dot
+            forward_speed_reward += forward_speed
+
+        wheel_contact_penalty = 0.0
+        wheel_contacts = self.car.get_wheel_contact(self.track_id)
+        for c in wheel_contacts:
+            if not c:
+                wheel_contact_penalty -= 5
 
         reward = (
-            speed_reward
-            + sensor_penalty
-            + steer_penalty
-            + idle_penalty
-            + wheel_penalty
+            speed_penalty
+            + dot_speed_penalty
+            + dir_reward
+            + forward_speed_reward
+            + wheel_contact_penalty
         )
-        # print(f"reward={speed_reward:2.2f}{sensor_penalty:2.2f}"
-        #       f"{steer_penalty:2.2f}{idle_penalty:2.2f}{wheel_penalty:2.2f}"
-        #       f"={reward:2.2f}")
+        print((
+            f"speed_penalty : {speed_penalty:.2f}, "
+            f"dot_speed_penalty : {dot_speed_penalty:.2f}, "
+            f"dir_reward : {dir_reward:.2f}, "
+            f"forward_speed_reward : {forward_speed_reward:.2f}, "
+            f"wheel_contact_penalty : {wheel_contact_penalty:.2f}, "
+            f"reward : {reward:3.2f}"
+        ))
 
         return reward
 

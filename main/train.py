@@ -36,9 +36,12 @@ def main():
     model = PPO(
         "MlpPolicy",
         env,
-        n_steps=512,
-        batch_size=64,
+        learning_rate=3e-4,
+        n_steps=2048,
+        batch_size=128,
         n_epochs=5,
+        ent_coef=0.01,
+        gamma=0.99,
         verbose=1,
         tensorboard_log=str(tb_log_dir),
     )

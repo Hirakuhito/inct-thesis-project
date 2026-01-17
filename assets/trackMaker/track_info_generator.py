@@ -153,7 +153,7 @@ def gen_mesh_data(points, width, radius, in_out):
             out_right_points
         ))
 
-    return mesh_points, tangent_norm
+    return mesh_points, tangent_unit
 
 
 def export_obj(mesh_points, filename, in_out):
