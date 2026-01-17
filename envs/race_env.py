@@ -212,9 +212,9 @@ class RacingEnv(gym.Env):
 
         return inside
 
-    def get_nn_index(self, obs):
+    def get_nn_index(self, obs, pos):
         points = self.center_point
-        car_pos = np.array(obs[:2])
+        car_pos = np.array(pos[:2])
 
         diff = points - car_pos
         dists = np.linalg.norm(diff, axis=1)
@@ -223,16 +223,16 @@ class RacingEnv(gym.Env):
 
         return idx
 
-    def _calc_reward(self, obs, steer, sensor):
+    def _calc_reward(self, obs, pos, steer, sensor):
         reward = 0.0
-        nn_idx = self.get_nn_index(obs)
+        nn_idx = self.get_nn_index(obs, pos)
 
-        car_vel = np.array(obs[3:5])
+        car_vel = np.array(obs[:2])
         speed = np.linalg.norm(car_vel)
 
-        speed_penalty = 0.0
-        if speed < 0.2:
-            speed_penalty = -0.2
+        idle_penalty = 0.0
+        if speed < 1.0:
+            idle_penalty = -0.5
             car_vel_unit = np.zeros_like(car_vel)
         else:
             car_vel_unit = car_vel / speed
@@ -254,21 +254,23 @@ class RacingEnv(gym.Env):
         wheel_contacts = self.car.get_wheel_contact(self.track_id)
         for c in wheel_contacts:
             if not c:
-                wheel_contact_penalty -= 1.0
+                wheel_contact_penalty -= 3.0
 
         reward = (
-            speed_penalty
+            idle_penalty
             + dot_speed_penalty
             + dir_reward
             + forward_speed_reward
             + wheel_contact_penalty
         )
-        print((
-            f"speed={speed:.2f}, "
-            f"dir_dot={dir_dot:.2f}, "
-            f"fwd={forward_speed:.2f}, "
-            f"reward={reward:.2f}"
-        ))
+
+        if self.render:
+            print((
+                f"speed={speed:.2f}, "
+                f"dir_dot={dir_dot:.2f}, "
+                f"fwd={forward_speed:.2f}, "
+                f"reward={reward:.2f}"
+            ))
 
         return reward
 
@@ -370,8 +372,8 @@ class RacingEnv(gym.Env):
         # print(f"goal_inside : {goal_inside}, "
         #       f"goal_prev_inside : {self.goal_prev_inside}")
 
-        obs, sensor, _ = self._get_obs()
-        reward = self._calc_reward(obs, steer, sensor)
+        obs, sensor, pos = self._get_obs()
+        reward = self._calc_reward(obs, pos, steer, sensor)
 
         off_all_wheels = self.car.is_all_wheels_off(self.track_id)
         if off_all_wheels:
@@ -379,7 +381,7 @@ class RacingEnv(gym.Env):
         else:
             self.off_ground_count = 0
 
-        course_out = self.off_ground_count > 50
+        course_out = self.off_ground_count > 20
         # course_out = False
         lap_completed = self.lap_checker()
 
@@ -403,8 +405,8 @@ class RacingEnv(gym.Env):
         if self.render:
             if not self.car.is_all_wheels_off(self.track_id):
                 # print(f"sim time: {self.sim_time:2.2f}")
-                self._update_cam_pos()
-                # self.car.draw_car_info(throttle, brake, steer)
+                # self._update_cam_pos()
+                self.car.draw_car_info(throttle, brake, steer)
 
         return obs, reward, terminated, truncated, info
 
