@@ -53,7 +53,7 @@ def main():
         eval_env,
         best_model_save_path=str(best_model_dir),
         log_path=str(eval_log_dir),
-        eval_freq=config.SAVE_FREQ * 5,
+        eval_freq=config.SAVE_FREQ,
         n_eval_episodes=1,
         deterministic=True
     )

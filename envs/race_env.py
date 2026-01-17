@@ -204,21 +204,21 @@ class RacingEnv(gym.Env):
     def _calc_reward(self, obs, steer, sensor):
         vel = obs[3:6]
         speed = np.linalg.norm(vel)
-        print(f"speed : {speed:2.2f}")
+        # print(f"speed : {speed:2.2f}")
 
         speed_reward = max(speed, 0.0) * 0.8
-        idle_penalty = -2 if speed < 0.2 else 0.0
+        idle_penalty = -1.5 if speed < 0.2 else 0.0
 
         sensor_hits = np.concatenate(sensor)
         runoff_count = np.sum(sensor_hits == -1.0)
         total_count = sensor_hits.size
         runoff_ratio = runoff_count / total_count
-        sensor_penalty = (1 - runoff_ratio)
+        sensor_penalty = -(1 - runoff_ratio)
 
         progress = np.clip(self.lap_count / config.TARGET_LAP, 0.0, 1.0)
         s = 1 / (1 + math.exp(-11 * (progress - 0.5)))
         # print(f"progress : {progress}, s : {s}")
-        steer_weight = 0.2 + 0.1 * s
+        steer_weight = 0.1 + 0.1 * s
         steer_penalty = -steer_weight * abs(steer)
 
         wheel_contact = self.car.get_wheel_contact(self.track_id)
@@ -239,7 +239,9 @@ class RacingEnv(gym.Env):
             + idle_penalty
             + wheel_penalty
         )
-        print(reward)
+        # print(f"reward={speed_reward:2.2f}{sensor_penalty:2.2f}"
+        #       f"{steer_penalty:2.2f}{idle_penalty:2.2f}{wheel_penalty:2.2f}"
+        #       f"={reward:2.2f}")
 
         return reward
 
