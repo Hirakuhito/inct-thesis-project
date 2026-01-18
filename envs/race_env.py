@@ -189,7 +189,7 @@ class RacingEnv(gym.Env):
              sensor_flat
         ])
 
-        return obs.astype(np.float32), sensor, pos
+        return obs.astype(np.float32), sensor_flat, pos
 
     def _accross_goal(self):
         pos, orn = p.getBasePositionAndOrientation(self.car.car_id)
@@ -212,20 +212,46 @@ class RacingEnv(gym.Env):
 
         return inside
 
-    def get_nn_index(self, obs, pos):
+    def get_nn_index(self, pos):
         points = self.center_point
-        car_pos = np.array(pos[:2])
+        car_pos = np.array(pos[:2]) + np.array([0, 0.5])
 
         diff = points - car_pos
         dists = np.linalg.norm(diff, axis=1)
 
         idx = int(np.argmin(dists))
+        idx_next = (idx + 10) % len(points)
 
-        return idx
+        return idx, idx_next
+
+    def get_runoff_ratio(self, sensor):
+        forward = sensor[:7]
+        side = sensor[7:13]
+        back = sensor[13:18]
+
+        count_foward = 0.0
+        count_side = 0.0
+        count_back = 0.0
+
+        for i in forward:
+            if i == -1:
+                count_foward += 1
+        for j in side:
+            if j == -1:
+                count_side += 1
+        for k in back:
+            if k == -1:
+                count_back += 1
+
+        ratio_forward = count_foward / len(forward)
+        ratio_side = count_foward / len(side)
+        ratio_back = count_back / len(back)
+
+        return ratio_forward, ratio_side, ratio_back
 
     def _calc_reward(self, obs, pos, steer, sensor):
         reward = 0.0
-        nn_idx = self.get_nn_index(obs, pos)
+        nn_idx, nn_indx_next = self.get_nn_index(pos)
 
         car_vel = np.array(obs[:2])
         speed = np.linalg.norm(car_vel)
@@ -237,17 +263,19 @@ class RacingEnv(gym.Env):
         else:
             car_vel_unit = car_vel / speed
         tangent_vec = np.array(self.track_normal_vec[nn_idx]) * -1
-        dir_dot = np.dot(tangent_vec, car_vel_unit)
+        tangent_vec_next = np.array(self.track_normal_vec[nn_indx_next]) * -1
+        dot_near = np.dot(tangent_vec, car_vel_unit)
+        dot_far = np.dot(tangent_vec_next, car_vel_unit)
 
         forward_speed = np.dot(tangent_vec, car_vel)
 
         dot_speed_penalty = 0.0
         dir_reward = 0.0
         forward_speed_reward = 0.0
-        if dir_dot <= 0 or forward_speed <= 0:
-            dot_speed_penalty = dir_dot * 5.0
+        if dot_near <= 0 or forward_speed <= 0:
+            dot_speed_penalty = dot_near * 5.0
         else:
-            dir_reward += dir_dot
+            dir_reward += dot_near
             forward_speed_reward = max(0.0, forward_speed) * 2.0
 
         wheel_contact_penalty = 0.0
@@ -256,21 +284,33 @@ class RacingEnv(gym.Env):
             if not c:
                 wheel_contact_penalty -= 3.0
 
+        sensor_penalty = 0.0
+        r_f, r_s, r_b = self.get_runoff_ratio(sensor)
+        fusion_sensor = r_f * 3.0 + r_s * 1.5 + r_b * 1.0
+        sensor_penalty = - fusion_sensor ** 2
+
+        lookahead = 1 - (dot_near - dot_far)
+        lookahead = np.clip(lookahead, 0.0, 1.0)
+        steer_penalty = abs(steer) * lookahead * 1.0
+
         reward = (
             idle_penalty
             + dot_speed_penalty
             + dir_reward
             + forward_speed_reward
             + wheel_contact_penalty
+            + sensor_penalty
+            + steer_penalty
         )
 
-        if self.render:
-            print((
-                f"speed={speed:.2f}, "
-                f"dir_dot={dir_dot:.2f}, "
-                f"fwd={forward_speed:.2f}, "
-                f"reward={reward:.2f}"
-            ))
+        # if self.render:
+        #     print((
+        #         f"speed={speed:.2f}, "
+        #         f"dir_dot={dir_dot:.2f}, "
+        #         f"fwd={forward_speed:.2f}, "
+        #         f"sr={fusion_sensor:.2f}"
+        #         f"reward={reward:.2f}"
+        #     ))
 
         return reward
 
@@ -405,8 +445,8 @@ class RacingEnv(gym.Env):
         if self.render:
             if not self.car.is_all_wheels_off(self.track_id):
                 # print(f"sim time: {self.sim_time:2.2f}")
-                # self._update_cam_pos()
-                self.car.draw_car_info(throttle, brake, steer)
+                self._update_cam_pos()
+                # self.car.draw_car_info(throttle, brake, steer)
 
         return obs, reward, terminated, truncated, info
 

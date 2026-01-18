@@ -34,7 +34,7 @@ class Car:
 
         self.sensor_r = {
             "origin": np.array([0.2, 0.0, 0.0]),
-            "base_direction": np.array([0.5, 0.0, -0.08]),
+            "base_direction": np.array([0.5, 0.0, -0.1]),
             "length": 1.0,
             "fov": np.deg2rad(60),
             "num_rays": 3
@@ -228,7 +228,7 @@ class Car:
                 starts.append(s)
                 ends.append(e)
                 ray_map.append((sensor_index, ray_index))
-                p.addUserDebugLine(s, e, [1, 0, 0], 1, 0.1)
+                # p.addUserDebugLine(s, e, [1, 0, 0], 1, 0.1)
 
             # print(f"starts: {starts}")
             # print(f"ends: {ends}")
