@@ -338,7 +338,6 @@ class RacingEnv(gym.Env):
                 self.lap_count += 1
                 self.total_lap_count += 1
                 lap_completed = True
-                print("# Lap Checked")
 
         self.goal_prev_inside = inside
         return lap_completed
@@ -427,7 +426,7 @@ class RacingEnv(gym.Env):
 
         if lap_completed:
             reward += 100.0
-            print(f"# Lap completed !  by {self.step_count} steps")
+            print(f"# {self.lap_count} lap completed !")
 
         terminated = course_out or lap_completed
 
