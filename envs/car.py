@@ -293,5 +293,5 @@ class Car:
                 self.car_id,
                 j,
                 p.TORQUE_CONTROL,
-                force=-70
+                force=force
             )

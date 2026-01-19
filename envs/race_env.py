@@ -98,7 +98,6 @@ class RacingEnv(gym.Env):
 
         thetas = np.array(thetas)
         self.course_theta_max = np.max(thetas)
-        print(f"# course_theta_max:{self.course_theta_max}")
 
         self.close()
         self.engine_id = p.connect(
@@ -283,11 +282,11 @@ class RacingEnv(gym.Env):
         reward = 0.0
 
         # コースの総点数の取得，進捗率用
-        course_length = len(self.center_point)
+        # course_length = len(self.center_point)
 
         # 車両の速さと速度の計算
         car_vel = np.array(obs[:2])
-        car_speed = np.linalg.norm(car_vel)
+        # car_speed = np.linalg.norm(car_vel)
 
         # 最も近い方向ベクトルと，少し先の方向ベクトルのインデックスを取得
         nn_idx, nn_indx_next = self.get_nn_index(pos)
@@ -325,16 +324,11 @@ class RacingEnv(gym.Env):
         # スピードに対する報酬
         forward_speed_reward = forward_speed ** 2
 
-        # forward_speed_reward と speed_penalty の比較用
-        # v_ref = 8.0
-        # safe_speed = max(v_ref * dot_far, 0.1)
-        # speed_penalty = -np.exp(-(car_speed / safe_speed))
-
         # ホイールの接地率に対するペナルティー
         wheel_contact_penalty = 0.0
         for c in wheel_contacts:
             if not c:
-                wheel_contact_penalty -= 3.0
+                wheel_contact_penalty -= forward_speed * 3.0
 
         # ランオフ検出率に対するペナルティ
         fusion_sensor = (r_f * 0.6 + r_s * 0.3 + r_b * 0.1)
@@ -357,17 +351,13 @@ class RacingEnv(gym.Env):
         # コースの曲率に対するステアリング量のペナルティ
         steer_penalty = mismatch
 
-        print((
-            # f"dir_penalty:{dir_penalty:3.2f} + "
-            # f"forward_speed_reward:{forward_speed_reward:3.2f} + "
-            # f"wheel_contact_penalty:{wheel_contact_penalty:3.2f} + "
-            # f"sensor_penalty:{sensor_penalty:3.2f}"
-            f"theta_max:{self.course_theta_max:2.2f}   "
-            f"theta:{theta:3.2f}   "
-            f"curve_strength:{curve_strength:3.2f}   "
-            f"steer_norm:{steer_norm:3.2f}   "
-            f"steer_penalty:{steer_penalty:3.2f}"
-        ))
+        # print((
+        #     f"dir_penalty:{dir_penalty:3.2f} + "
+        #     f"forward_speed_reward:{forward_speed_reward:3.2f} + "
+        #     f"wheel_contact_penalty:{wheel_contact_penalty:3.2f} + "
+        #     f"sensor_penalty:{sensor_penalty:3.2f}"
+        #     f"steer_penalty:{steer_penalty:3.2f}"
+        # ))
 
         reward = (
             dir_penalty
@@ -543,7 +533,6 @@ class RacingEnv(gym.Env):
                 # print(f"sim time: {self.sim_time:2.2f}")
                 self._update_cam_pos()
                 # self.car.draw_car_info(throttle, brake, steer)
-                # pass
 
         return obs, reward, terminated, truncated, info
 

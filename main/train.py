@@ -2,12 +2,10 @@ from datetime import datetime
 from pathlib import Path
 
 import pybullet as p
-from gymnasium.wrappers import TimeLimit
 from stable_baselines3 import PPO
 from stable_baselines3.common.vec_env import SubprocVecEnv, VecMonitor
 from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 from stable_baselines3.common.callbacks import CheckpointCallback, EvalCallback
-from stable_baselines3.common.monitor import Monitor
 
 from envs.race_env import RacingEnv
 

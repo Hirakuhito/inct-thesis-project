@@ -87,6 +87,8 @@ def gen_center_point(length, radius, segments=51, pos=np.array([0, 0])):
     points = np.concatenate(all_points, axis=0)
     points += pos
 
+    print(f"points:\n{points}")
+
     return points
 
 
@@ -131,6 +133,7 @@ def gen_mesh_data(points, width, radius, in_out):
 
     # * Normal vector
     normal_unit = np.array([tangent_unit[:, 1], -tangent_unit[:, 0]]).T
+    print(f"normal unit vector:\n{normal_unit}")
 
     offset_vector = normal_unit * (width / 2)
 
