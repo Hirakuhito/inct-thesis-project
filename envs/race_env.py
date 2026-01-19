@@ -338,10 +338,7 @@ class RacingEnv(gym.Env):
         tan_dot = np.dot(tangent_far, tangent_near)
         theta = np.arccos(np.clip(tan_dot, -1.0, 1.0))
         curve_strength = np.clip(theta / self.course_theta_max, 0.0, 1.0)
-        steer_norm = np.clip(
-            abs(steer) / config.CAR["max_steer_angle"],
-            0, 1.0
-        )
+        steer_norm = abs(steer)
 
         # コースの曲率とステア量の不一致度の計算
         target_steer = curve_strength ** 0.5
@@ -352,18 +349,14 @@ class RacingEnv(gym.Env):
         steer_penalty = mismatch
 
         # print((
-        #     f"dir_penalty:{dir_penalty:3.2f} + "
-        #     f"forward_speed_reward:{forward_speed_reward:3.2f} + "
-        #     f"wheel_contact_penalty:{wheel_contact_penalty:3.2f} + "
-        #     f"sensor_penalty:{sensor_penalty:3.2f}"
-        #     f"steer_penalty:{steer_penalty:3.2f}"
+        #     f"steer:{steer}  "
+        #     f"steer_norm:{steer_norm}"
         # ))
 
         reward = (
             dir_penalty
             + back_penalty
             + forward_speed_reward
-            # + speed_penalty
             + wheel_contact_penalty
             + sensor_penalty
             + steer_penalty
