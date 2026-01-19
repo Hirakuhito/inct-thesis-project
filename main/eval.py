@@ -24,7 +24,7 @@ def main():
     env = RacingEnv(car_pos, car_orn, render=True)
     env = Monitor(env)
 
-    run_name = "experiments/run_20260118_014157"
+    run_name = "experiments/run_20260118_231608"
     model_path = PROJECT_ROOT / run_name \
         / "best_model" / "best_model"
 

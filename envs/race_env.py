@@ -220,7 +220,7 @@ class RacingEnv(gym.Env):
         dists = np.linalg.norm(diff, axis=1)
 
         idx = int(np.argmin(dists))
-        idx_next = (idx + 10) % len(points)
+        idx_next = (idx - 10) % len(points)
 
         return idx, idx_next
 
@@ -252,6 +252,8 @@ class RacingEnv(gym.Env):
     def _calc_reward(self, obs, pos, steer, sensor):
         reward = 0.0
         nn_idx, nn_indx_next = self.get_nn_index(pos)
+        idx_point = self.track_normal_vec[nn_idx]
+        idx_point_next = self.track_normal_vec[nn_indx_next]
 
         car_vel = np.array(obs[:2])
         speed = np.linalg.norm(car_vel)
@@ -262,8 +264,8 @@ class RacingEnv(gym.Env):
             car_vel_unit = np.zeros_like(car_vel)
         else:
             car_vel_unit = car_vel / speed
-        tangent_vec = np.array(self.track_normal_vec[nn_idx]) * -1
-        tangent_vec_next = np.array(self.track_normal_vec[nn_indx_next]) * -1
+        tangent_vec = np.array(idx_point) * -1
+        tangent_vec_next = np.array(idx_point_next) * -1
         dot_near = np.dot(tangent_vec, car_vel_unit)
         dot_far = np.dot(tangent_vec_next, car_vel_unit)
 
@@ -291,7 +293,7 @@ class RacingEnv(gym.Env):
 
         lookahead = 1 - (dot_near - dot_far)
         lookahead = np.clip(lookahead, 0.0, 1.0)
-        steer_penalty = abs(steer) * lookahead * 1.0
+        steer_penalty = -abs(steer) * lookahead * 1.0
 
         reward = (
             idle_penalty
@@ -311,6 +313,24 @@ class RacingEnv(gym.Env):
         #         f"sr={fusion_sensor:.2f}"
         #         f"reward={reward:.2f}"
         #     ))
+        # point = np.append(self.center_point[nn_idx], 0.2)
+        # point2 = np.append(self.center_point[nn_indx_next], 0.2)
+
+        # p.addUserDebugLine(
+        #     point,
+        #     point + np.append(tangent_vec * 0.4, 0.0),
+        #     [1, 0, 0],
+        #     lineWidth=5,
+        #     lifeTime=0.05
+        # )
+
+        # p.addUserDebugLine(
+        #     point2,
+        #     point2 + np.append(tangent_vec_next * 0.4, 0.0),
+        #     [0, 0, 1],
+        #     lineWidth=5,
+        #     lifeTime=0.05
+        # )
 
         return reward
 
@@ -444,8 +464,9 @@ class RacingEnv(gym.Env):
         if self.render:
             if not self.car.is_all_wheels_off(self.track_id):
                 # print(f"sim time: {self.sim_time:2.2f}")
-                self._update_cam_pos()
+                # self._update_cam_pos()
                 # self.car.draw_car_info(throttle, brake, steer)
+                pass
 
         return obs, reward, terminated, truncated, info
 
