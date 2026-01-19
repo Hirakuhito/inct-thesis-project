@@ -114,9 +114,9 @@ class Car:
 
             if "wheel" in name:
                 self.wheel_joints.append(i)
-            print(f"joint[{i}]: {info[13]}")
-        pprint.pprint(f"steer joints index : {self.steer_joints}")
-        pprint.pprint(f"wheel joints index : {self.wheel_joints}")
+        #     print(f"joint[{i}]: {info[13]}")
+        # pprint.pprint(f"steer joints index : {self.steer_joints}")
+        # pprint.pprint(f"wheel joints index : {self.wheel_joints}")
 
     def _gen_world_direction(self, base_dir, fov, num):
         angles = np.linspace(-fov/2, fov/2, num)

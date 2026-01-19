@@ -297,15 +297,16 @@ class RacingEnv(gym.Env):
             back_penalty = dot_near * 5.0
             return back_penalty
 
-        # 進行方向の一致度に対するペナルティ
-        dir_penalty = ((dot_near * 0.8 + dot_far * 0.2) - 1) * 2.0
+        # 進行方向の不一致度に対するペナルティ
+        dir_penalty = -(1 - dot_near) * 2.0
 
         # スピードに対する報酬
-        forward_speed_reward = forward_speed * 2.0
+        forward_speed_reward = forward_speed ** 2
 
-        # forward_speed_rewardとspeed_penaltyの比較用
-        # v_ref = 3.0
-        # speed_penalty = -np.exp(-(car_speed / v_ref))
+        # forward_speed_reward と speed_penalty の比較用
+        # v_ref = 8.0
+        # safe_speed = max(v_ref * dot_far, 0.1)
+        # speed_penalty = -np.exp(-(car_speed / safe_speed))
 
         # ホイールの接地率に対するペナルティー
         wheel_contact_penalty = 0.0
@@ -318,21 +319,27 @@ class RacingEnv(gym.Env):
         sensor_penalty = - np.tanh(fusion_sensor) * 4
 
         # 少し先の方向ベクトルと最近のベクトルの差
-        lookahead = 1 - (dot_near - dot_far)
+        lookahead = 1 - abs(dot_near - dot_far)
         lookahead = np.clip(lookahead, 0.0, 1.0)
         steer_penalty = -abs((abs(steer) * lookahead * 2.0) ** 3.0)
 
         reward = (
             dir_penalty
             + forward_speed_reward
+            # + speed_penalty
             + wheel_contact_penalty
             + sensor_penalty
             + steer_penalty
         )
 
-        # if self.render:
+        if not np.isfinite(reward):
+            print("reward invalid:", reward)
+            reward = -100.0
+
+        if self.render:
+            print(f"reward:{reward:.2f}")
         #     point = np.append(self.center_point[nn_idx], 0.2)
-        #     point2 = np.append(self.center_point[nn_indx_next], 0.2)
+        #     point2 = np.append(self.center_point[nn_idx+1], 0.2)
 
         #     p.addUserDebugLine(
         #         point,
@@ -450,6 +457,11 @@ class RacingEnv(gym.Env):
         #       f"goal_prev_inside : {self.goal_prev_inside}")
 
         obs, sensor, pos = self._get_obs()
+
+        if not np.all(np.isfinite(obs)):
+            print("obs =", obs)
+            raise RuntimeError("NaN in observation")
+
         reward = self._calc_reward(obs, pos, steer, sensor)
 
         off_all_wheels = self.car.is_all_wheels_off(self.track_id)

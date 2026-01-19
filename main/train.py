@@ -4,6 +4,8 @@ from pathlib import Path
 import pybullet as p
 from gymnasium.wrappers import TimeLimit
 from stable_baselines3 import PPO
+from stable_baselines3.common.vec_env import SubprocVecEnv, VecMonitor
+from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 from stable_baselines3.common.callbacks import CheckpointCallback, EvalCallback
 from stable_baselines3.common.monitor import Monitor
 
@@ -25,19 +27,31 @@ def main():
         config.CAR["base_z"]
     ]
     car_orn = p.getQuaternionFromEuler([0, 0, 0])
-    env = RacingEnv(car_pos, car_orn, render=config.RENDER)
-    env = TimeLimit(env, max_episode_steps=1000)
-    env = Monitor(env)
 
-    eval_env = RacingEnv(car_pos, car_orn, render=False)
-    eval_env = TimeLimit(eval_env, max_episode_steps=5000)
-    eval_env = Monitor(eval_env)
+    n_envs = 8
+    env = SubprocVecEnv([
+        make_env(car_pos, car_orn, i) for i in range(n_envs)
+    ])
+    env = VecMonitor(env)
+    env = VecNormalize(env, norm_obs=True, norm_reward=True, clip_obs=10.)
+
+    eval_env = DummyVecEnv([lambda: RacingEnv(car_pos, car_orn, render=False)])
+    eval_env = VecMonitor(eval_env)
+    eval_env = VecNormalize(
+        eval_env,
+        norm_obs=True,
+        norm_reward=False,
+        clip_obs=10.0
+    )
+
+    eval_env.training = False
+    eval_env.norm_reward = False
 
     model = PPO(
         "MlpPolicy",
         env,
-        learning_rate=3e-4,
-        n_steps=2048,
+        learning_rate=1e-4,
+        n_steps=2048//n_envs,
         batch_size=128,
         n_epochs=5,
         ent_coef=0.01,
@@ -73,6 +87,19 @@ def main():
     model.save(str(file_path))
 
     print(f"Training finished. Results saved in: {file_path}")
+
+
+def make_env(car_pos, car_orn, rank, base_seed=0):
+    def _init():
+        env = RacingEnv(
+            car_pos,
+            car_orn,
+            render=False
+        )
+        env.reset(seed=base_seed+rank)
+        return env
+
+    return _init
 
 
 def gen_exp_data_dir():
