@@ -1,4 +1,3 @@
-import pprint
 from pathlib import Path
 
 import numpy as np
@@ -294,5 +293,5 @@ class Car:
                 self.car_id,
                 j,
                 p.TORQUE_CONTROL,
-                force=force
+                force=-70
             )

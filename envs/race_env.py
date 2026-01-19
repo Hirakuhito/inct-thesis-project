@@ -82,10 +82,27 @@ class RacingEnv(gym.Env):
             in_out="in"
         )
 
+        thetas = []
+        normal_len = len(self.track_normal_vec)
+        for i in range(len(self.track_normal_vec) - 1):
+            dot_raw = np.dot(
+                self.track_normal_vec[i],
+                self.track_normal_vec[(i-10) % normal_len]
+            )
+            dot = np.clip(
+                dot_raw,
+                -1.0,
+                1.0
+            )
+            thetas.append(np.arccos(dot))
+
+        thetas = np.array(thetas)
+        self.course_theta_max = np.max(thetas)
+        print(f"# course_theta_max:{self.course_theta_max}")
+
         self.close()
         self.engine_id = p.connect(
             p.GUI if self.render else p.DIRECT,
-            options="--stderr_logging_level=0"
         )
 
         p.setAdditionalSearchPath(pd.getDataPath())
@@ -265,6 +282,9 @@ class RacingEnv(gym.Env):
     def _calc_reward(self, obs, pos, steer, sensor):
         reward = 0.0
 
+        # コースの総点数の取得，進捗率用
+        course_length = len(self.center_point)
+
         # 車両の速さと速度の計算
         car_vel = np.array(obs[:2])
         car_speed = np.linalg.norm(car_vel)
@@ -278,27 +298,29 @@ class RacingEnv(gym.Env):
         car_forward = self.get_car_dir()[:2]
 
         # 車とコースの向きの一致度を計算
-        tangent_vec = np.array(idx_point) * -1
-        tangent_vec_next = np.array(idx_point_next) * -1
-        dot_near = np.dot(tangent_vec, car_forward)
-        dot_far = np.dot(tangent_vec_next, car_forward)
+        tangent_near = np.array(idx_point) * -1
+        tangent_far = np.array(idx_point_next) * -1
+        dot_near = np.dot(tangent_near, car_forward)
+        dot_far = np.dot(tangent_far, car_forward)
 
         # コース前方に対する車両の速度の計算
-        forward_speed = np.dot(tangent_vec, car_vel)
+        forward_speed = np.dot(tangent_near, car_vel)
 
-        # コースに対するホイールの接地判定
+        # コースに対するホイールの接地判定取得
         wheel_contacts = self.car.get_wheel_contact(self.track_id)
 
         # センサー 前方，側方，後方 のランオフ率の取得
         r_f, r_s, r_b = self.get_runoff_ratio(sensor)
 
         # 後ろを向いている・前向きでバックに対するペナルティ
+        back_penalty = 0.0
         if dot_near < 0 or forward_speed < 0:
             back_penalty = dot_near * 5.0
             return back_penalty
 
         # 進行方向の不一致度に対するペナルティ
-        dir_penalty = -(1 - dot_near) * 2.0
+        dir_fusion = (1 - dot_near) * 0.7 + (1 - dot_far) * 0.3
+        dir_penalty = -dir_fusion * 10.0
 
         # スピードに対する報酬
         forward_speed_reward = forward_speed ** 2
@@ -318,13 +340,38 @@ class RacingEnv(gym.Env):
         fusion_sensor = (r_f * 0.6 + r_s * 0.3 + r_b * 0.1)
         sensor_penalty = - np.tanh(fusion_sensor) * 4
 
-        # 少し先の方向ベクトルと最近のベクトルの差
-        lookahead = 1 - abs(dot_near - dot_far)
-        lookahead = np.clip(lookahead, 0.0, 1.0)
-        steer_penalty = -abs((abs(steer) * lookahead * 2.0) ** 3.0)
+        # 少し先の方向ベクトルと最近のベクトルとの角度差
+        tan_dot = np.dot(tangent_far, tangent_near)
+        theta = np.arccos(np.clip(tan_dot, -1.0, 1.0))
+        curve_strength = np.clip(theta / self.course_theta_max, 0.0, 1.0)
+        steer_norm = np.clip(
+            abs(steer) / config.CAR["max_steer_angle"],
+            0, 1.0
+        )
+
+        # コースの曲率とステア量の不一致度の計算
+        target_steer = curve_strength ** 0.5
+        mismatch = - abs(target_steer - steer_norm) ** 2
+        # excess = -max(steer_norm - curve_strength, 0.0) ** 2
+
+        # コースの曲率に対するステアリング量のペナルティ
+        steer_penalty = mismatch
+
+        print((
+            # f"dir_penalty:{dir_penalty:3.2f} + "
+            # f"forward_speed_reward:{forward_speed_reward:3.2f} + "
+            # f"wheel_contact_penalty:{wheel_contact_penalty:3.2f} + "
+            # f"sensor_penalty:{sensor_penalty:3.2f}"
+            f"theta_max:{self.course_theta_max:2.2f}   "
+            f"theta:{theta:3.2f}   "
+            f"curve_strength:{curve_strength:3.2f}   "
+            f"steer_norm:{steer_norm:3.2f}   "
+            f"steer_penalty:{steer_penalty:3.2f}"
+        ))
 
         reward = (
             dir_penalty
+            + back_penalty
             + forward_speed_reward
             # + speed_penalty
             + wheel_contact_penalty
@@ -336,10 +383,10 @@ class RacingEnv(gym.Env):
             print("reward invalid:", reward)
             reward = -100.0
 
-        if self.render:
-            print(f"reward:{reward:.2f}")
+        # if self.render:
+        #     # print(f"reward:{reward:.2f}")
         #     point = np.append(self.center_point[nn_idx], 0.2)
-        #     point2 = np.append(self.center_point[nn_idx+1], 0.2)
+        #     point2 = np.append(self.center_point[nn_idx-10], 0.2)
 
         #     p.addUserDebugLine(
         #         point,
