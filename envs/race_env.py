@@ -289,7 +289,7 @@ class RacingEnv(gym.Env):
         sensor_penalty = 0.0
         r_f, r_s, r_b = self.get_runoff_ratio(sensor)
         fusion_sensor = r_f * 3.0 + r_s * 1.5 + r_b * 1.0
-        sensor_penalty = - fusion_sensor ** 2
+        sensor_penalty = - fusion_sensor * 1.5
 
         lookahead = 1 - (dot_near - dot_far)
         lookahead = np.clip(lookahead, 0.0, 1.0)
@@ -305,32 +305,25 @@ class RacingEnv(gym.Env):
             + steer_penalty
         )
 
-        # if self.render:
-        #     print((
-        #         f"speed={speed:.2f}, "
-        #         f"dir_dot={dir_dot:.2f}, "
-        #         f"fwd={forward_speed:.2f}, "
-        #         f"sr={fusion_sensor:.2f}"
-        #         f"reward={reward:.2f}"
-        #     ))
-        # point = np.append(self.center_point[nn_idx], 0.2)
-        # point2 = np.append(self.center_point[nn_indx_next], 0.2)
+        if self.render:
+            point = np.append(self.center_point[nn_idx], 0.2)
+            point2 = np.append(self.center_point[nn_indx_next], 0.2)
 
-        # p.addUserDebugLine(
-        #     point,
-        #     point + np.append(tangent_vec * 0.4, 0.0),
-        #     [1, 0, 0],
-        #     lineWidth=5,
-        #     lifeTime=0.05
-        # )
+            p.addUserDebugLine(
+                point,
+                point + np.append(tangent_vec * 0.4, 0.0),
+                [1, 0, 0],
+                lineWidth=5,
+                lifeTime=0.05
+            )
 
-        # p.addUserDebugLine(
-        #     point2,
-        #     point2 + np.append(tangent_vec_next * 0.4, 0.0),
-        #     [0, 0, 1],
-        #     lineWidth=5,
-        #     lifeTime=0.05
-        # )
+            p.addUserDebugLine(
+                point2,
+                point2 + np.append(tangent_vec_next * 0.4, 0.0),
+                [0, 0, 1],
+                lineWidth=5,
+                lifeTime=0.05
+            )
 
         return reward
 
@@ -464,9 +457,9 @@ class RacingEnv(gym.Env):
         if self.render:
             if not self.car.is_all_wheels_off(self.track_id):
                 # print(f"sim time: {self.sim_time:2.2f}")
-                # self._update_cam_pos()
+                self._update_cam_pos()
                 # self.car.draw_car_info(throttle, brake, steer)
-                pass
+                # pass
 
         return obs, reward, terminated, truncated, info
 
