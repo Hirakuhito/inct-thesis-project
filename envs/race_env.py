@@ -249,81 +249,106 @@ class RacingEnv(gym.Env):
 
         return ratio_forward, ratio_side, ratio_back
 
+    def get_car_dir(self):
+        pos, orn = p.getBasePositionAndOrientation(self.car.car_id)
+
+        rot_mat = p.getMatrixFromQuaternion(orn)
+        rot_mat = np.array(rot_mat).reshape(3, 3)
+
+        forward_local = np.array([0, 1, 0])
+        forward_world = rot_mat @ forward_local
+
+        forward_world = forward_world / np.linalg.norm(forward_world)
+
+        return forward_world
+
     def _calc_reward(self, obs, pos, steer, sensor):
         reward = 0.0
+
+        # 車両の速さと速度の計算
+        car_vel = np.array(obs[:2])
+        car_speed = np.linalg.norm(car_vel)
+
+        # 最も近い方向ベクトルと，少し先の方向ベクトルのインデックスを取得
         nn_idx, nn_indx_next = self.get_nn_index(pos)
         idx_point = self.track_normal_vec[nn_idx]
         idx_point_next = self.track_normal_vec[nn_indx_next]
 
-        car_vel = np.array(obs[:2])
-        speed = np.linalg.norm(car_vel)
+        # 車の前方向ベクトルの取得
+        car_forward = self.get_car_dir()[:2]
 
-        idle_penalty = 0.0
-        if speed < 1.0:
-            idle_penalty = -0.5
-            car_vel_unit = np.zeros_like(car_vel)
-        else:
-            car_vel_unit = car_vel / speed
+        # 車とコースの向きの一致度を計算
         tangent_vec = np.array(idx_point) * -1
         tangent_vec_next = np.array(idx_point_next) * -1
-        dot_near = np.dot(tangent_vec, car_vel_unit)
-        dot_far = np.dot(tangent_vec_next, car_vel_unit)
+        dot_near = np.dot(tangent_vec, car_forward)
+        dot_far = np.dot(tangent_vec_next, car_forward)
 
+        # コース前方に対する車両の速度の計算
         forward_speed = np.dot(tangent_vec, car_vel)
 
-        dot_speed_penalty = 0.0
-        dir_reward = 0.0
-        forward_speed_reward = 0.0
-        if dot_near <= 0 or forward_speed <= 0:
-            dot_speed_penalty = dot_near * 5.0
-        else:
-            dir_reward += dot_near
-            forward_speed_reward = max(0.0, forward_speed) * 2.0
-
-        wheel_contact_penalty = 0.0
+        # コースに対するホイールの接地判定
         wheel_contacts = self.car.get_wheel_contact(self.track_id)
+
+        # センサー 前方，側方，後方 のランオフ率の取得
+        r_f, r_s, r_b = self.get_runoff_ratio(sensor)
+
+        # 後ろを向いている・前向きでバックに対するペナルティ
+        if dot_near < 0 or forward_speed < 0:
+            back_penalty = dot_near * 5.0
+            return back_penalty
+
+        # 進行方向の一致度に対するペナルティ
+        dir_penalty = ((dot_near * 0.8 + dot_far * 0.2) - 1) * 2.0
+
+        # スピードに対する報酬
+        forward_speed_reward = forward_speed * 2.0
+
+        # forward_speed_rewardとspeed_penaltyの比較用
+        # v_ref = 3.0
+        # speed_penalty = -np.exp(-(car_speed / v_ref))
+
+        # ホイールの接地率に対するペナルティー
+        wheel_contact_penalty = 0.0
         for c in wheel_contacts:
             if not c:
                 wheel_contact_penalty -= 3.0
 
-        sensor_penalty = 0.0
-        r_f, r_s, r_b = self.get_runoff_ratio(sensor)
-        fusion_sensor = r_f * 3.0 + r_s * 1.5 + r_b * 1.0
-        sensor_penalty = - fusion_sensor * 1.5
+        # ランオフ検出率に対するペナルティ
+        fusion_sensor = (r_f * 0.6 + r_s * 0.3 + r_b * 0.1)
+        sensor_penalty = - np.tanh(fusion_sensor) * 4
 
+        # 少し先の方向ベクトルと最近のベクトルの差
         lookahead = 1 - (dot_near - dot_far)
         lookahead = np.clip(lookahead, 0.0, 1.0)
-        steer_penalty = -abs(steer) * lookahead * 1.0
+        steer_penalty = -abs((abs(steer) * lookahead * 2.0) ** 3.0)
 
         reward = (
-            idle_penalty
-            + dot_speed_penalty
-            + dir_reward
+            dir_penalty
             + forward_speed_reward
             + wheel_contact_penalty
             + sensor_penalty
             + steer_penalty
         )
 
-        if self.render:
-            point = np.append(self.center_point[nn_idx], 0.2)
-            point2 = np.append(self.center_point[nn_indx_next], 0.2)
+        # if self.render:
+        #     point = np.append(self.center_point[nn_idx], 0.2)
+        #     point2 = np.append(self.center_point[nn_indx_next], 0.2)
 
-            p.addUserDebugLine(
-                point,
-                point + np.append(tangent_vec * 0.4, 0.0),
-                [1, 0, 0],
-                lineWidth=5,
-                lifeTime=0.05
-            )
+        #     p.addUserDebugLine(
+        #         point,
+        #         point + np.append(tangent_vec * 0.4, 0.0),
+        #         [1, 0, 0],
+        #         lineWidth=5,
+        #         lifeTime=0.05
+        #     )
 
-            p.addUserDebugLine(
-                point2,
-                point2 + np.append(tangent_vec_next * 0.4, 0.0),
-                [0, 0, 1],
-                lineWidth=5,
-                lifeTime=0.05
-            )
+        #     p.addUserDebugLine(
+        #         point2,
+        #         point2 + np.append(tangent_vec_next * 0.4, 0.0),
+        #         [0, 0, 1],
+        #         lineWidth=5,
+        #         lifeTime=0.05
+        #     )
 
         return reward
 
