@@ -24,7 +24,7 @@ CIRCUIT = {
 CAR = {
     "path": 'assets/formular/formular_car',
     "urdf": 'car.urdf',
-    "scale": 0.2,
+    "scale": 1,
     "base_x": CIRCUIT["radius"],
     "base_y": -0.6,
     "base_z": 0.1,

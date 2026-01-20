@@ -1,7 +1,9 @@
+import pprint
 from pathlib import Path
 
 import numpy as np
 import pybullet as p
+import pybullet_data as pd
 
 from main import config
 
@@ -11,12 +13,13 @@ PROJECT_ROOT = CURRENT_DIR.parent.parent
 
 class Car:
     def __init__(self, pos, orn):
+        p.setAdditionalSearchPath(pd.getDataPath())
         self.base_pos = pos
         self.base_orn = orn
 
         self.car_id = None
 
-        self.steer_joints = [0, 2]
+        self.steer_joints = []
         self.wheel_joints = []
 
         self._setup_car()
@@ -63,14 +66,15 @@ class Car:
         ]
 
         self.wheel_sign = {
-            1: 0,  # front right
+            2: 0,  # front right
             3: 0,  # front left
             5: -1,  # rear right
             7: -1,  # rear left
         }
 
     def _setup_car(self):
-        car_path = str(PROJECT_ROOT / config.CAR["path"] / config.CAR["urdf"])
+        # car_path = str(PROJECT_ROOT / config.CAR["path"] / config.CAR["urdf"])
+        car_path = "racecar/racecar.urdf"
 
         self.car_id = p.loadURDF(
             car_path,
@@ -113,9 +117,12 @@ class Car:
 
             if "wheel" in name:
                 self.wheel_joints.append(i)
-        #     print(f"joint[{i}]: {info[13]}")
-        # pprint.pprint(f"steer joints index : {self.steer_joints}")
-        # pprint.pprint(f"wheel joints index : {self.wheel_joints}")
+
+            if "steer" in name:
+                self.steer_joints.append(i)
+
+        pprint.pprint(f"steer joints index : {self.steer_joints}")
+        pprint.pprint(f"wheel joints index : {self.wheel_joints}")
 
     def _gen_world_direction(self, base_dir, fov, num):
         angles = np.linspace(-fov/2, fov/2, num)
