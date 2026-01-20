@@ -73,7 +73,6 @@ class Car:
         }
 
     def _setup_car(self):
-        # car_path = str(PROJECT_ROOT / config.CAR["path"] / config.CAR["urdf"])
         car_path = "racecar/racecar.urdf"
 
         self.car_id = p.loadURDF(
