@@ -321,9 +321,6 @@ class RacingEnv(gym.Env):
         dir_fusion = (1 - dot_near) * 0.7 + (1 - dot_far) * 0.3
         dir_penalty = -dir_fusion * 10.0
 
-        # スピードに対する報酬
-        forward_speed_reward = forward_speed ** 2
-
         # ホイールの接地率に対するペナルティー
         wheel_contact_penalty = 0.0
         for c in wheel_contacts:
@@ -348,10 +345,12 @@ class RacingEnv(gym.Env):
         # コースの曲率に対するステアリング量のペナルティ
         steer_penalty = mismatch
 
-        # print((
-        #     f"steer:{steer}  "
-        #     f"steer_norm:{steer_norm}"
-        # ))
+        # スピードに対する報酬
+        forward_speed_reward = 0.0
+        if forward_speed < 0.1:
+            forward_speed_reward = -3 * np.exp(-forward_speed)
+        else:
+            forward_speed_reward = forward_speed**2
 
         reward = (
             dir_penalty
@@ -367,7 +366,7 @@ class RacingEnv(gym.Env):
             reward = -100.0
 
         # if self.render:
-        #     # print(f"reward:{reward:.2f}")
+        # print(f"reward:{reward:.2f}")
         #     point = np.append(self.center_point[nn_idx], 0.2)
         #     point2 = np.append(self.center_point[nn_idx-10], 0.2)
 
