@@ -35,7 +35,7 @@ CAR = {
 
 FRICTION = {
     "body": 1.0,
-    "track": 2.5,
+    "track": 1.5,
     "runoff": 1.0,
     "lateral": 2.0,
     "rolling": 0.01,

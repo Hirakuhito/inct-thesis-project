@@ -87,8 +87,6 @@ def gen_center_point(length, radius, segments=51, pos=np.array([0, 0])):
     points = np.concatenate(all_points, axis=0)
     points += pos
 
-    print(f"points:\n{points}")
-
     return points
 
 
