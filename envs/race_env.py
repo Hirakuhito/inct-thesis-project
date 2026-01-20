@@ -351,7 +351,7 @@ class RacingEnv(gym.Env):
             forward_speed_reward = -3 * np.exp(-forward_speed)
             print("now I'm stopping...")
         else:
-            forward_speed_reward = forward_speed**2
+            forward_speed_reward = (forward_speed * 5) ** 2
 
         reward = forward_speed_reward
 

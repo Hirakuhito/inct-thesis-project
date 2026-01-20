@@ -19,7 +19,7 @@ class Car:
 
         self.car_id = None
 
-        self.steer_joints = []
+        self.steer_joints = [5, 7]
         self.wheel_joints = []
 
         self._setup_car()
@@ -66,10 +66,10 @@ class Car:
         ]
 
         self.wheel_sign = {
-            2: 0,  # front right
-            3: 0,  # front left
-            5: -1,  # rear right
-            7: -1,  # rear left
+            2: 1,  # rear left
+            3: 1,  # rear light
+            5: 0,  # front left
+            7: 0,  # front right
         }
 
     def _setup_car(self):
@@ -112,16 +112,13 @@ class Car:
             info = p.getJointInfo(self.car_id, i)
             name = info[1].decode("utf-8")
 
-            # print(f"info : {info}")
+            print(f"info : {info}")
 
             if "wheel" in name:
                 self.wheel_joints.append(i)
 
-            if "steer" in name:
-                self.steer_joints.append(i)
-
-        pprint.pprint(f"steer joints index : {self.steer_joints}")
-        pprint.pprint(f"wheel joints index : {self.wheel_joints}")
+        # pprint.pprint(f"steer joints index : {self.steer_joints}")
+        # pprint.pprint(f"wheel joints index : {self.wheel_joints}")
 
     def _gen_world_direction(self, base_dir, fov, num):
         angles = np.linspace(-fov/2, fov/2, num)
@@ -299,5 +296,5 @@ class Car:
                 self.car_id,
                 j,
                 p.TORQUE_CONTROL,
-                force=force
+                force=1.0 * self.wheel_sign[j]
             )
