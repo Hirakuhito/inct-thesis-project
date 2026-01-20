@@ -24,7 +24,7 @@ def main():
         config.CAR["base_y"],
         config.CAR["base_z"]
     ]
-    car_orn = p.getQuaternionFromEuler([0, 0, 0])
+    car_orn = p.getQuaternionFromEuler([0, 0, -90])
 
     n_envs = 8
     env = SubprocVecEnv([

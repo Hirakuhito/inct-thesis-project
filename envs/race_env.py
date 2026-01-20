@@ -395,7 +395,7 @@ class RacingEnv(gym.Env):
 
         p.resetDebugVisualizerCamera(
             cameraDistance=4.0,
-            cameraYaw=np.degrees(yaw),
+            cameraYaw=np.degrees(yaw-np.pi/2),
             cameraPitch=-45,
             cameraTargetPosition=pos
         )
@@ -423,7 +423,7 @@ class RacingEnv(gym.Env):
             config.CAR["base_y"],
             config.CAR["base_z"]
         ]
-        init_orn = p.getQuaternionFromEuler([0, 0, 0])
+        init_orn = p.getQuaternionFromEuler([0, 0, np.pi/2])
 
         super().reset(seed=seed)
 

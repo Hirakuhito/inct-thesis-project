@@ -1,6 +1,7 @@
 import time
 from pathlib import Path
 
+import numpy as np
 import pybullet as p
 from stable_baselines3 import PPO
 from stable_baselines3.common.monitor import Monitor
@@ -19,7 +20,7 @@ def main():
         config.CAR["base_y"],
         config.CAR["base_z"]
     ]
-    car_orn = p.getQuaternionFromEuler([0, 0, 0])
+    car_orn = p.getQuaternionFromEuler([0, 0, np.pi / 2])
 
     env = RacingEnv(car_pos, car_orn, render=True)
     env = Monitor(env)
