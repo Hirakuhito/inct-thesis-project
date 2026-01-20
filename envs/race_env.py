@@ -56,7 +56,7 @@ class RacingEnv(gym.Env):
         self.max_steer_angle = config.CAR["max_steer_angle"]
 
         self.lap_started = False
-        self.start_time = time.time()
+        self.start_time = None
         self.goal_prev_inside = False
         self.left_start = False
         # *================================
@@ -361,27 +361,8 @@ class RacingEnv(gym.Env):
             print("reward invalid:", reward)
             reward = -100.0
 
-        if self.render:
-            print(f"reward:{reward:.2f}")
-        #     point = np.append(self.center_point[nn_idx], 0.2)
-        #     point2 = np.append(self.center_point[nn_idx-10], 0.2)
-
-        #     p.addUserDebugLine(
-        #         point,
-        #         point + np.append(tangent_vec * 0.4, 0.0),
-        #         [1, 0, 0],
-        #         lineWidth=5,
-        #         lifeTime=0.05
-        #     )
-
-        #     p.addUserDebugLine(
-        #         point2,
-        #         point2 + np.append(tangent_vec_next * 0.4, 0.0),
-        #         [0, 0, 1],
-        #         lineWidth=5,
-        #         lifeTime=0.05
-        #     )
-
+        # if self.render:
+        #     print(f"reward:{reward:.2f}")
         return reward
 
     def _update_cam_pos(self):
@@ -397,20 +378,30 @@ class RacingEnv(gym.Env):
 
     def lap_checker(self):
         inside = self._accross_goal()
-
         lap_completed = False
+        lap_time = None
 
         if not inside:
             self.left_start = True
 
-        if inside and not self.goal_prev_inside:
-            if self.left_start:
+        if inside and not self.goal_prev_inside and self.left_start:
+            now = time.time()
+
+            if not self.lap_started:
+                self.lap_started = True
+                self.start_time = now
+                print("# Lap start")
+            else:
+                lap_time = now - self.start_time
+                self.lap_times.append(lap_time)
+                self.start_time = now
+
                 self.lap_count += 1
                 self.total_lap_count += 1
                 lap_completed = True
 
         self.goal_prev_inside = inside
-        return lap_completed
+        return lap_completed, lap_time
 
     def reset(self, seed=None, options=None):
         init_pos = [
@@ -430,7 +421,10 @@ class RacingEnv(gym.Env):
         self.goal_prev_inside = False
         self.left_start = False
         self.lap_count = 0
-        self.start_time = time.time()
+
+        self.lap_times = []
+        self.lap_started = False
+        self.start_time = None
 
         obs, _, _ = self._get_obs()
 
@@ -440,10 +434,12 @@ class RacingEnv(gym.Env):
         return obs, {}
 
     def step(self, action):
+        # 中断・切り捨て用フラグ
         terminated = False
         truncated = False
         info = {}
 
+        # 車両の出力
         throttle, brake, steer = action
 
         self.car.apply_action(
@@ -459,28 +455,6 @@ class RacingEnv(gym.Env):
         self.sim_time += self.time_step
         # print(f"hit_data : {self.car.checkHit(self.obj_dict)}")
 
-        goal_inside = self._accross_goal()
-
-        if goal_inside and not self.goal_prev_inside:
-            now = time.time()
-            self.goal_prev_inside = True
-
-            if not self.lap_started:
-                self.lap_started = True
-                self.start_time = now
-                print("Lap start")
-            else:
-                lap_time = now - self.start_time
-                if self.render:
-                    print(f"Lap time : {lap_time:.2f}")
-                self.start_time = now
-
-        elif not goal_inside and self.goal_prev_inside:
-            self.goal_prev_inside = False
-
-        # print(f"goal_inside : {goal_inside}, "
-        #       f"goal_prev_inside : {self.goal_prev_inside}")
-
         obs, sensor, pos = self._get_obs()
 
         if not np.all(np.isfinite(obs)):
@@ -489,6 +463,16 @@ class RacingEnv(gym.Env):
 
         reward = self._calc_reward(obs, pos, steer, sensor)
 
+        lap_completed, lap_time = self.lap_checker()
+
+        if lap_completed:
+            reward += 100.0
+            print(f"# {self.total_lap_count} lap completed !")
+
+            if self.render and lap_time is not None:
+                avg = sum(self.lap_times) / len(self.lap_times)
+                print(f"Lap time: {lap_time:.2f}s | Avg: {avg:.2f}s")
+
         off_all_wheels = self.car.is_all_wheels_off(self.track_id)
         if off_all_wheels:
             self.off_ground_count += 1
@@ -496,12 +480,7 @@ class RacingEnv(gym.Env):
             self.off_ground_count = 0
 
         course_out = self.off_ground_count > 20
-        # course_out = False
-        lap_completed = self.lap_checker()
-
-        if lap_completed:
-            reward += 100.0
-            print(f"# {self.lap_count} lap completed !")
+        # course_out = Fals
 
         terminated = course_out or lap_completed
 

@@ -169,14 +169,14 @@ class Car:
             f"Throttle: {throttle:.2f}",
             (base + np.array([0, 0, 0])).tolist(),
             textColorRGB=[1, 1, 1],
-            lifeTime=0.3,
+            lifeTime=0.1,
             textSize=1.1
         )
         p.addUserDebugText(
             f"Brake   : {brake:.2f}",
             (base + np.array([0, 0, -dy])).tolist(),
             textColorRGB=[1, 1, 1],
-            lifeTime=0.2,
+            lifeTime=0.1,
             textSize=1.1
         )
         p.addUserDebugText(
@@ -283,6 +283,7 @@ class Car:
                 brake_torque = brake * max_brake * (np.sign(wheel_vel))
 
             total_torque = drive_torque + brake_torque
+            # print(f"{drive_torque} - {brake_torque}")
             force = self.wheel_sign[j] * total_torque
             # print(
             #     f"total torque[{j}] : {drive_torque:5.2f} - "
