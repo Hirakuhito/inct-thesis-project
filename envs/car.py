@@ -233,7 +233,7 @@ class Car:
                 starts.append(s)
                 ends.append(e)
                 ray_map.append((sensor_index, ray_index))
-                p.addUserDebugLine(s, e, [1, 0, 0], 1, 0.1)
+                # p.addUserDebugLine(s, e, [1, 0, 0], 1, 0.1)
 
             # print(f"starts: {starts}")
             # print(f"ends: {ends}")

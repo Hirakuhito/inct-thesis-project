@@ -271,7 +271,7 @@ class RacingEnv(gym.Env):
         rot_mat = p.getMatrixFromQuaternion(orn)
         rot_mat = np.array(rot_mat).reshape(3, 3)
 
-        forward_local = np.array([0, 1, 0])
+        forward_local = np.array([1, 0, 0])
         forward_world = rot_mat @ forward_local
 
         forward_world = forward_world / np.linalg.norm(forward_world)
@@ -353,21 +353,14 @@ class RacingEnv(gym.Env):
         else:
             forward_speed_reward = forward_speed**2
 
-        reward = (
-            dir_penalty
-            + back_penalty
-            + forward_speed_reward
-            + wheel_contact_penalty
-            + sensor_penalty
-            + steer_penalty
-        )
+        reward = forward_speed_reward
 
         if not np.isfinite(reward):
             print("reward invalid:", reward)
             reward = -100.0
 
-        # if self.render:
-        # print(f"reward:{reward:.2f}")
+        if self.render:
+            print(f"reward:{reward:.2f}")
         #     point = np.append(self.center_point[nn_idx], 0.2)
         #     point2 = np.append(self.center_point[nn_idx-10], 0.2)
 
@@ -511,7 +504,7 @@ class RacingEnv(gym.Env):
         terminated = course_out or lap_completed
 
         if terminated:
-            reward -= 50.0
+            # reward -= 5
             if course_out:
                 print("# terminated with course out.")
             if lap_completed:
@@ -524,8 +517,9 @@ class RacingEnv(gym.Env):
         if self.render:
             if not self.car.is_all_wheels_off(self.track_id):
                 # print(f"sim time: {self.sim_time:2.2f}")
-                self._update_cam_pos()
+                # self._update_cam_pos()
                 # self.car.draw_car_info(throttle, brake, steer)
+                pass
 
         return obs, reward, terminated, truncated, info
 
