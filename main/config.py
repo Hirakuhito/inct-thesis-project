@@ -3,7 +3,7 @@ import numpy as np
 RENDER = False
 
 MAX_TIME = 20
-STEP_PER_ENV = 300_000
+STEP_PER_ENV = 500_000
 TOTAL_TIME_STEP = 8 * STEP_PER_ENV
 N_SPLIT = 10
 SAVE_FREQ = TOTAL_TIME_STEP // N_SPLIT
@@ -28,8 +28,8 @@ CAR = {
     "base_x": CIRCUIT["radius"],
     "base_y": -0.6,
     "base_z": 0.1,
-    "max_torque": 300.0,
-    "max_brake_force": 300.0,
+    "max_torque": 200.0,
+    "max_brake_force": 200.0,
     "max_steer_angle": np.pi / 3
 }
 

@@ -353,20 +353,16 @@ class RacingEnv(gym.Env):
             forward_speed_reward = forward_speed**2
 
         reward = (
-            dir_penalty
-            + back_penalty
-            + forward_speed_reward
-            + wheel_contact_penalty
-            + sensor_penalty
-            + steer_penalty
+            forward_speed_reward
+            + dir_penalty
         )
 
         if not np.isfinite(reward):
             print("reward invalid:", reward)
             reward = -100.0
 
-        # if self.render:
-        # print(f"reward:{reward:.2f}")
+        if self.render:
+            print(f"reward:{reward:.2f}")
         #     point = np.append(self.center_point[nn_idx], 0.2)
         #     point2 = np.append(self.center_point[nn_idx-10], 0.2)
 
@@ -510,7 +506,7 @@ class RacingEnv(gym.Env):
         terminated = course_out or lap_completed
 
         if terminated:
-            reward -= 50.0
+            # reward -= 50.0
             if course_out:
                 print("# terminated with course out.")
             if lap_completed:
