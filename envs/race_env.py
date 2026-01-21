@@ -329,48 +329,123 @@ class RacingEnv(gym.Env):
     def _calc_reward(self, obs, action, pos):
         reward = 0.0
 
+        # ======================
+        # 観測の分解
+        # ======================
         vel_dim = 3
         sensor_dim = (len(obs) - vel_dim) // 2
 
         sensor_left = obs[vel_dim:(vel_dim + sensor_dim)]
-        sensor_right = obs[(vel_dim+sensor_dim):(vel_dim + 2 * sensor_dim)]
+        sensor_right = obs[(vel_dim + sensor_dim):(vel_dim + 2 * sensor_dim)]
 
         throttle, brake, steer = action
         steer_dir = np.sign(steer)
+        steer_abs = abs(steer)
 
-        # コースの総点数の取得，進捗率用
-        # course_length = len(self.center_point)
-
-        # 車両の速さと速度の計算
         car_vel = np.array(obs[:2])
-        # car_speed = np.linalg.norm(car_vel)
 
-        # 最も近い方向ベクトルと，少し先の方向ベクトルのインデックスを取得
-        nn_idx, nn_indx_next = self.get_nn_index(pos)
-        idx_point = self.track_normal_vec[nn_idx]
-        idx_point_next = self.track_normal_vec[nn_indx_next]
+        # ======================
+        # コース情報
+        # ======================
+        nn_idx, nn_idx_next = self.get_nn_index(pos)
+        tangent_near = -np.array(self.track_normal_vec[nn_idx])
+        tangent_far = -np.array(self.track_normal_vec[nn_idx_next])
 
-        # 車の前方向ベクトルの取得
         car_forward = self.get_car_dir()[:2]
 
-        # 車とコースの向きの一致度を計算
-        tangent_near = np.array(idx_point) * -1
-        tangent_far = np.array(idx_point_next) * -1
         dot_near = np.dot(tangent_near, car_forward)
-        dot_far = np.dot(tangent_far, car_forward)
+        dot_far = np.dot(tangent_far,  car_forward)
 
-        # コース前方に対する車両の速度の計算
         forward_speed = np.dot(tangent_near, car_vel)
         speed_scale = np.clip(forward_speed / 5.5, 0.0, 1.0)
 
-        # コースに対するホイールの接地判定取得
-        wheel_contacts = self.car.get_wheel_contact(self.track_id)
+        # ======================
+        # コース曲率
+        # ======================
+        tan_dot = np.dot(tangent_near, tangent_far)
+        theta = np.arccos(np.clip(tan_dot, -1.0, 1.0))
+        curve_strength = np.clip(theta / self.course_theta_max, 0.0, 1.0)
 
-        # センサー 左右の危険度計算
+        # ======================
+        # 前進報酬
+        # ======================
+        if forward_speed > 0:
+            forward_reward = (forward_speed ** 2) * (1 - curve_strength)
+        else:
+            forward_reward = 0.0
+
+        # ======================
+        #  バックペナルティ
+        # ======================
+        back_penalty = 0.0
+        if forward_speed < 0:
+            back_penalty = forward_speed * 5.0   # 強めに抑制
+
+        # ======================
+        #  向きズレペナルティ
+        # ======================
+        dir_error = (1 - dot_near) * 0.75 + (1 - dot_far) * 0.25
+        direction_penalty = -(
+            dir_error
+            * speed_scale
+            * (1 - curve_strength)
+            * 3.0
+        )
+
+        # ======================
+        #  正しいステア方向の報酬
+        # ======================
+        target_steer = curve_strength ** 0.5
+        steer_match = 1.0 - abs(target_steer - steer_abs)
+        steer_match = np.clip(steer_match, 0.0, 1.0)
+
+        steer_reward = steer_match * speed_scale * 2.0
+
+        # ======================
+        # 正しい方向に切った報酬
+        # ======================
+        steer_dir_reward = 0.0
+        steer_dir_reward = 0.0
+        if (
+            curve_strength > 0.1
+            and forward_speed > 1.0
+            and dot_near > 0.5
+            and steer_dir != 0
+        ):
+            curve_dir = np.sign(np.cross(tangent_near, tangent_far))
+            if steer_dir == curve_dir:
+                steer_dir_reward = speed_scale * curve_strength * 2.0
+
+        # ======================
+        #  間違った方向切ったペナルティ
+        # ======================
+        steer_penalty = 0.0
+        if dot_near > 0 and steer_dir != 0:
+            # 曲がるべき方向と逆に切っている
+            curve_dir = np.sign(np.cross(tangent_near, tangent_far))
+            if steer_dir != curve_dir:
+                steer_penalty = -(
+                    steer_abs
+                    * speed_scale
+                    * (1.0 - curve_strength)
+                    * 3.0
+                )
+
+        # ======================
+        #  タイヤ接地ペナルティ
+        # ======================
+        wheel_contacts = self.car.get_wheel_contact(self.track_id)
+        contact_penalty = 0.0
+        for c in wheel_contacts:
+            if not c:
+                contact_penalty -= speed_scale * 2.0
+
+        # ======================
+        # センサーペナルティ
+        # ======================
         danger_left = np.mean(sensor_left)
         danger_right = np.mean(sensor_right)
 
-        # steerの方向で危険度の左右選択
         if steer_dir > 0:
             danger = danger_right
         elif steer_dir < 0:
@@ -378,71 +453,38 @@ class RacingEnv(gym.Env):
         else:
             danger = 0.5 * (danger_left + danger_right)
 
-        # 危険度を 0〜1 に整形
         danger_level = np.tanh((danger - 0.45) * 5.0)
         danger_level = np.clip(danger_level, 0.0, 1.0)
 
-        # センサーペナルティ
         sensor_penalty = -danger_level * speed_scale * 5.0
 
-        # 後ろを向いている・前向きでバックに対するペナルティ
-        back_penalty = 0.0
-        if dot_near < 0 or forward_speed < 0:
-            back_penalty = dot_near * 5.0
-
-        # 進行方向の不一致度に対するペナルティ
-        dir_fusion = (1 - dot_near) * 0.7 + (1 - dot_far) * 0.3
-        dir_penalty = -dir_fusion * speed_scale * 3.0
-
-        # ホイールの接地率に対するペナルティー
-        wheel_contact_penalty = 0.0
-        for c in wheel_contacts:
-            if not c:
-                wheel_contact_penalty -= forward_speed
-
-        # 少し先の方向ベクトルと最近のベクトルとの角度差
-        tan_dot = np.dot(tangent_far, tangent_near)
-        theta = np.arccos(np.clip(tan_dot, -1.0, 1.0))
-        curve_strength = np.clip(theta / self.course_theta_max, 0.0, 1.0)
-        steer_norm = abs(steer)
-
-        # コースの曲率とステア量の不一致度の計算
-        target_steer = curve_strength ** 0.5
-        mismatch = 1 - abs(target_steer - steer_norm)
-        # excess = -max(steer_norm - curve_strength, 0.0) ** 2
-
-        # コースの曲率に対するステアリング量のペナルティ
-        steer_reward = mismatch * speed_scale * 2.0
-
-        # スピードに対する報酬
-        forward_speed_reward = 0.0
-        if forward_speed < 0.1:
-            forward_speed_reward = - min(self.sim_time, 5.0)
-            # print("# now I'm stopping...")
-        else:
-            forward_speed_reward = forward_speed**2
-
+        # ======================
+        # 総和
+        # ======================
         reward = (
-            forward_speed_reward
-            + dir_penalty
+            forward_reward
             + back_penalty
-            + wheel_contact_penalty
+            + direction_penalty
             + steer_reward
+            + steer_dir_reward
+            + steer_penalty
+            + contact_penalty
             + sensor_penalty
         )
 
-        print(
-            f"sensor_penalty:{sensor_penalty:.2f}"
-            f"steer_reward:{steer_reward:.2f}"
-        )
+        info = {
+            "forward": forward_reward,
+            "back": back_penalty,
+            "direction": direction_penalty,
+            "steer": steer_reward,
+            "steer_dir": steer_dir_reward,
+            "steer_penalty": steer_penalty,
+            "contact": contact_penalty,
+            "sensor": sensor_penalty,
+            "curve": curve_strength,
+        }
 
-        if not np.isfinite(reward):
-            print("reward invalid:", reward)
-            reward = -100.0
-
-        # if self.render:
-        #     print(f"reward:{reward:.2f}")
-        return reward
+        return reward, info
 
     def _update_cam_pos(self):
         pos, orn = p.getBasePositionAndOrientation(self.car.car_id)
@@ -541,7 +583,17 @@ class RacingEnv(gym.Env):
             print("obs =", obs)
             raise RuntimeError("NaN in observation")
 
-        reward = self._calc_reward(obs, action, pos)
+        reward, reward_info = self._calc_reward(obs, action, pos)
+
+        info = {
+            "reward/forward": reward_info["forward"],
+            "reward/back": reward_info["back"],
+            "reward/direction": reward_info["direction"],
+            "reward/steer": reward_info["steer"],
+            "reward/steer_penalty": reward_info["steer_penalty"],
+            "reward/contact": reward_info["contact"],
+            "reward/sensor": reward_info["sensor"],
+        }
 
         lap_completed, lap_time = self.lap_checker()
 

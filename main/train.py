@@ -3,9 +3,11 @@ from pathlib import Path
 
 import pybullet as p
 from stable_baselines3 import PPO
-from stable_baselines3.common.vec_env import SubprocVecEnv, VecMonitor
-from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
-from stable_baselines3.common.callbacks import CheckpointCallback, EvalCallback
+from stable_baselines3.common.callbacks import (BaseCallback,
+                                                CheckpointCallback,
+                                                EvalCallback)
+from stable_baselines3.common.vec_env import (DummyVecEnv, SubprocVecEnv,
+                                              VecMonitor, VecNormalize)
 
 from envs.race_env import RacingEnv
 
@@ -13,6 +15,27 @@ from . import config
 
 CURRENT_DIR = Path(__file__).resolve()
 PROJECT_ROOT = CURRENT_DIR.parent.parent
+
+
+class RewardLoggerCallback(BaseCallback):
+    def __init__(self, verbose=0):
+        super().__init__(verbose)
+
+    def _on_step(self) -> bool:
+        infos = self.locals.get("infos", [])
+
+        # VecEnv 対応（複数 env の平均）
+        reward_dict = {}
+
+        for info in infos:
+            for k, v in info.items():
+                if k.startswith("reward/"):
+                    reward_dict.setdefault(k, []).append(v)
+
+        for k, v_list in reward_dict.items():
+            self.logger.record(k, sum(v_list) / len(v_list))
+
+        return True
 
 
 def main():
@@ -73,9 +96,11 @@ def main():
         deterministic=True
     )
 
+    reward_logger_cb = RewardLoggerCallback()
+
     model.learn(
         total_timesteps=config.TOTAL_TIME_STEP,
-        callback=[checkpoint_cb, eval_cb],
+        callback=[checkpoint_cb, eval_cb, reward_logger_cb],
         tb_log_name="ML_v1"
     )
 
