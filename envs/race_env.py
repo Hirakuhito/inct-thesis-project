@@ -317,11 +317,10 @@ class RacingEnv(gym.Env):
         back_penalty = 0.0
         if dot_near < 0 or forward_speed < 0:
             back_penalty = dot_near * 5.0
-            return back_penalty
 
         # 進行方向の不一致度に対するペナルティ
         dir_fusion = (1 - dot_near) * 0.7 + (1 - dot_far) * 0.3
-        dir_penalty = -dir_fusion * 10.0
+        dir_penalty = -dir_fusion * speed_scale * 3.0
 
         # ホイールの接地率に対するペナルティー
         wheel_contact_penalty = 0.0
@@ -355,7 +354,7 @@ class RacingEnv(gym.Env):
         # スピードに対する報酬
         forward_speed_reward = 0.0
         if forward_speed < 0.1:
-            forward_speed_reward = -3 * np.exp(-forward_speed)
+            forward_speed_reward = - min(self.sim_time, 5.0)
             print("now I'm stopping...")
         else:
             forward_speed_reward = forward_speed**2
@@ -369,18 +368,20 @@ class RacingEnv(gym.Env):
             + sensor_penalty
         )
 
-        # print(
-        #     f"forward_speed: {forward_speed:.2f}  "
-        #     f"steer_penalty:{steer_penalty:.2f}  "
-        #     f"sensor_penalty:{sensor_penalty:.2f}"
-        # )
+        print(
+            f"forward_speed: {forward_speed:.2f}  "
+            f"steer_penalty:{steer_penalty:.2f}  "
+            f"sensor_penalty:{sensor_penalty:.2f}  "
+            f"sim_time:{self.sim_time:.2f}  "
+            f"reward:{reward:.2f}"
+        )
 
         if not np.isfinite(reward):
             print("reward invalid:", reward)
             reward = -100.0
 
-        if self.render:
-            print(f"reward:{reward:.2f}")
+        # if self.render:
+        #     print(f"reward:{reward:.2f}")
         return reward
 
     def _update_cam_pos(self):
