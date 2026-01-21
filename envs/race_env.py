@@ -336,7 +336,7 @@ class RacingEnv(gym.Env):
         )
 
         # 危険度（0〜1）
-        danger_level = np.tanh((fusion_sensor - 0.45) * 4.5)
+        danger_level = np.tanh((fusion_sensor - 0.45) * 5.0)
         danger_level = np.clip(danger_level, 0.0, 1.0)
 
         # センサーペナルティ
