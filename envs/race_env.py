@@ -328,13 +328,23 @@ class RacingEnv(gym.Env):
             if not c:
                 wheel_contact_penalty -= forward_speed
 
-        # ランオフ検出率に対するペナルティ
-        fusion_sensor = (r_f * 0.6 + r_s * 0.3 + r_b * 0.1)
-        if fusion_sensor < 0.1:
-            sensor_penalty = 0.0
-        sensor_penalty = (
-            -np.tanh(fusion_sensor) * max(speed_scale - 0.3, 0.0)
-            * 3.0
+        # 前方重視の融合
+        fusion_sensor = (
+            r_f * 0.7 +
+            r_s * 0.2 +
+            r_b * 0.1
+        )
+
+        # 危険度（0〜1）
+        danger_level = np.tanh((fusion_sensor - 0.4) * 4.0)
+        danger_level = np.clip(danger_level, 0.0, 1.0)
+
+        # センサーペナルティ
+        sensor_penalty = - danger_level * speed_scale * 2.5
+
+        print(
+            f"fusion_sensor:{fusion_sensor:.3f}  "
+            f"sensor_penalty:{sensor_penalty:.3f}"
         )
 
         # 少し先の方向ベクトルと最近のベクトルとの角度差

@@ -28,8 +28,8 @@ CAR = {
     "base_x": CIRCUIT["radius"],
     "base_y": -0.6,
     "base_z": 0.1,
-    "max_torque": 400.0,
-    "max_brake_force": 400.0,
+    "max_torque": 600.0,
+    "max_brake_force": 600.0,
     "max_steer_angle": np.pi / 3
 }
 
