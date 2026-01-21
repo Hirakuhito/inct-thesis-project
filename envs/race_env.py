@@ -342,11 +342,6 @@ class RacingEnv(gym.Env):
         # センサーペナルティ
         sensor_penalty = - danger_level * speed_scale * 2.5
 
-        print(
-            f"fusion_sensor:{fusion_sensor:.3f}  "
-            f"sensor_penalty:{sensor_penalty:.3f}"
-        )
-
         # 少し先の方向ベクトルと最近のベクトルとの角度差
         tan_dot = np.dot(tangent_far, tangent_near)
         theta = np.arccos(np.clip(tan_dot, -1.0, 1.0))
@@ -365,7 +360,7 @@ class RacingEnv(gym.Env):
         forward_speed_reward = 0.0
         if forward_speed < 0.1:
             forward_speed_reward = - min(self.sim_time, 5.0)
-            print("now I'm stopping...")
+            # print("# now I'm stopping...")
         else:
             forward_speed_reward = forward_speed**2
 
