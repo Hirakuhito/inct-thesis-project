@@ -511,7 +511,7 @@ class RacingEnv(gym.Env):
                 reward -= 1.0
                 print("# terminated with course out.")
             if lap_completed:
-                reward += 10.0
+                reward += 50.0
                 print("# terminated with Lap completed.")
 
         if self.sim_time >= self.max_time:
