@@ -350,7 +350,7 @@ class RacingEnv(gym.Env):
 
         # スピードに対する報酬
         forward_speed_reward = 0.0
-        if forward_speed < 1e-2:
+        if forward_speed < 0.1:
             forward_speed_reward = -3 * np.exp(-forward_speed)
             print("now I'm stopping...")
         else:
@@ -375,8 +375,8 @@ class RacingEnv(gym.Env):
             print("reward invalid:", reward)
             reward = -100.0
 
-        # if self.render:
-        #     print(f"reward:{reward:.2f}")
+        if self.render:
+            print(f"reward:{reward:.2f}")
         return reward
 
     def _update_cam_pos(self):
