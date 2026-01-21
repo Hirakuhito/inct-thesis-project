@@ -23,11 +23,11 @@ class RacingEnv(gym.Env):
         self.render = render
         self.engine_id = None
 
-        # Pos(x, y, z), Vel(vx, vy, vz), Sensor(18),
+        # Vel(vx, vy, vz), Sensor(22),
         self.observation_space = spaces.Box(
             low=-np.inf,
             high=np.inf,
-            shape=(21, ),
+            shape=(25, ),
             dtype=np.float32
         )
 
@@ -336,7 +336,7 @@ class RacingEnv(gym.Env):
         )
 
         # 危険度（0〜1）
-        danger_level = np.tanh((fusion_sensor - 0.4) * 4.0)
+        danger_level = np.tanh((fusion_sensor - 0.45) * 4.5)
         danger_level = np.clip(danger_level, 0.0, 1.0)
 
         # センサーペナルティ
@@ -508,7 +508,7 @@ class RacingEnv(gym.Env):
 
         if terminated:
             if course_out:
-                reward -= 1.0
+                reward -= 10.0
                 print("# terminated with course out.")
             if lap_completed:
                 reward += 50.0
