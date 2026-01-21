@@ -194,6 +194,37 @@ class RacingEnv(gym.Env):
             p.stepSimulation()
             self._update_cam_pos()
 
+    def get_baseline_action(self):
+        # 車両位置
+        pos, _ = p.getBasePositionAndOrientation(self.car.car_id)
+
+        # 最も近いコース方向
+        nn_idx, _ = self.get_nn_index(pos)
+        tangent = -np.array(self.track_normal_vec[nn_idx])
+        tangent = tangent[:2]
+        tangent = tangent / np.linalg.norm(tangent)
+
+        # 車両前方向
+        car_forward = self.get_car_dir()[:2]
+
+        # 向きの角度誤差
+        cross = np.cross(
+            np.append(car_forward, 0.0),
+            np.append(tangent, 0.0)
+        )[2]
+        dot = np.dot(car_forward, tangent)
+        angle_error = np.arctan2(cross, dot)
+
+        # steer 正規化（最大許容角）
+        max_angle = 0.5  # rad ≒ 28.6°
+        steer = np.clip(angle_error / max_angle, -1.0, 1.0)
+
+        # フルスロットル
+        throttle = 1.0
+        brake = 0.0
+
+        return np.array([throttle, brake, steer], dtype=np.float32)
+
     def _get_obs(self):
         vel, _ = p.getBaseVelocity(self.car.car_id)
 
@@ -352,7 +383,7 @@ class RacingEnv(gym.Env):
         danger_level = np.clip(danger_level, 0.0, 1.0)
 
         # センサーペナルティ
-        sensor_penalty = -danger_level * speed_scale * 2.5
+        sensor_penalty = -danger_level * speed_scale * 5.0
 
         # 後ろを向いている・前向きでバックに対するペナルティ
         back_penalty = 0.0
@@ -377,11 +408,11 @@ class RacingEnv(gym.Env):
 
         # コースの曲率とステア量の不一致度の計算
         target_steer = curve_strength ** 0.5
-        mismatch = - abs(target_steer - steer_norm) ** 2
+        mismatch = 1 - abs(target_steer - steer_norm)
         # excess = -max(steer_norm - curve_strength, 0.0) ** 2
 
         # コースの曲率に対するステアリング量のペナルティ
-        steer_penalty = mismatch * speed_scale * 2.0
+        steer_reward = mismatch * speed_scale * 2.0
 
         # スピードに対する報酬
         forward_speed_reward = 0.0
@@ -396,8 +427,13 @@ class RacingEnv(gym.Env):
             + dir_penalty
             + back_penalty
             + wheel_contact_penalty
-            + steer_penalty
+            + steer_reward
             + sensor_penalty
+        )
+
+        print(
+            f"sensor_penalty:{sensor_penalty:.2f}"
+            f"steer_reward:{steer_reward:.2f}"
         )
 
         if not np.isfinite(reward):
