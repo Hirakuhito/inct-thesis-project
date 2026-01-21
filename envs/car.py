@@ -282,8 +282,8 @@ class Car:
             if abs(wheel_vel) > 1e-2 and brake > 1e-3:
                 brake_torque = brake * max_brake * (np.sign(wheel_vel))
 
-            total_torque = drive_torque + brake_torque
-            # print(f"{drive_torque} - {brake_torque}")
+            total_torque = drive_torque - brake_torque
+            # print(f"{drive_torque} - {brake_torque} = {total_torque}")
             force = self.wheel_sign[j] * total_torque
             # print(
             #     f"total torque[{j}] : {drive_torque:5.2f} - "

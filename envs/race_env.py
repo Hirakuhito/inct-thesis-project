@@ -279,9 +279,9 @@ class RacingEnv(gym.Env):
 
         return forward_world
 
-    def _calc_reward(self, obs, pos, steer, sensor):
+    def _calc_reward(self, obs, pos, action, sensor):
         reward = 0.0
-
+        throttle, brake, steer = action
         # コースの総点数の取得，進捗率用
         # course_length = len(self.center_point)
 
@@ -330,7 +330,7 @@ class RacingEnv(gym.Env):
 
         # ランオフ検出率に対するペナルティ
         fusion_sensor = (r_f * 0.6 + r_s * 0.3 + r_b * 0.1)
-        sensor_penalty = - np.tanh(fusion_sensor) * 4
+        sensor_penalty = - np.tanh(fusion_sensor) * 3
 
         # 少し先の方向ベクトルと最近のベクトルとの角度差
         tan_dot = np.dot(tangent_far, tangent_near)
@@ -343,14 +343,14 @@ class RacingEnv(gym.Env):
         mismatch = - abs(target_steer - steer_norm) ** 2
         # excess = -max(steer_norm - curve_strength, 0.0) ** 2
 
-        speed_scale = np.clip(forward_speed / 20.0, 0.0, 1.0)
+        speed_scale = np.clip(forward_speed / 5.5, 0.0, 1.0)
 
         # コースの曲率に対するステアリング量のペナルティ
         steer_penalty = mismatch * speed_scale * 2.0
 
         # スピードに対する報酬
         forward_speed_reward = 0.0
-        if forward_speed < 0.1:
+        if forward_speed < 1e-2:
             forward_speed_reward = -3 * np.exp(-forward_speed)
             print("now I'm stopping...")
         else:
@@ -362,12 +362,14 @@ class RacingEnv(gym.Env):
             + back_penalty
             + wheel_contact_penalty
             + steer_penalty
+            + sensor_penalty
         )
 
-        # print(
-        #     f"forward_speed_reward: {forward_speed_reward:.2f}  "
-        #     f"steer_penalty:{steer_penalty:.2f}"
-        # )
+        print(
+            f"forward_speed: {forward_speed:.2f}  "
+            f"steer_penalty:{steer_penalty:.2f}  "
+            f"sensor_penalty:{sensor_penalty:.2f}"
+        )
 
         if not np.isfinite(reward):
             print("reward invalid:", reward)
@@ -472,7 +474,7 @@ class RacingEnv(gym.Env):
             print("obs =", obs)
             raise RuntimeError("NaN in observation")
 
-        reward = self._calc_reward(obs, pos, steer, sensor)
+        reward = self._calc_reward(obs, pos, action, sensor)
 
         lap_completed, lap_time = self.lap_checker()
 
