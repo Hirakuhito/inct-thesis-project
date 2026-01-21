@@ -344,8 +344,8 @@ class RacingEnv(gym.Env):
         sensor_right = obs[(vel_dim + sensor_dim):(vel_dim + 2 * sensor_dim)]
 
         throttle, brake, steer = action
-        car_vel = np.array(obs[:2]) # [vx, vy]
-        car_forward = self.get_car_dir()[:2] # 車体の向きベクトル
+        car_vel = np.array(obs[:2])  # [vx, vy]
+        car_forward = self.get_car_dir()[:2]   # 車体の向きベクトル
 
         # ======================
         # 2. コース情報の取得
@@ -370,7 +370,7 @@ class RacingEnv(gym.Env):
             forward_reward = forward_speed * dot_near
         else:
             # 停止・後退・逆走へのペナルティ（「動かない」ことへの対策）
-            forward_reward = -0.5 
+            forward_reward = -0.5
 
         # --- B. 姿勢報酬 (Alignment) ---
         # 速度に関わらず、コースの向きを向いていれば加点
@@ -397,7 +397,7 @@ class RacingEnv(gym.Env):
         contact_penalty = 0.0
         for c in wheel_contacts:
             if not c:
-                contact_penalty -= 2.0 # 脱輪への強い警告
+                contact_penalty -= 2.0  # 脱輪への強い警告
 
         # --- F. 生存報酬 (Survival) ---
         # 毎ステップ少額を与えることで、コース上に留まる動機を作る
@@ -542,13 +542,14 @@ class RacingEnv(gym.Env):
         reward, reward_info = self._calc_reward(obs, action, pos)
 
         info = {
+            "reward/total": reward_info["reward_total"],
             "reward/forward": reward_info["forward"],
-            "reward/back": reward_info["back"],
-            "reward/direction": reward_info["direction"],
-            "reward/steer": reward_info["steer"],
+            "reward/alignment": reward_info["alignment"],
+            "reward/survival": reward_info["survival"],
+            "reward/centering_penalty": reward_info["centering"],
+            "reward/edge_penalty": reward_info["edge"],
             "reward/steer_penalty": reward_info["steer_penalty"],
-            "reward/contact": reward_info["contact"],
-            "reward/sensor": reward_info["sensor"],
+            "reward/contact_penalty": reward_info["contact"],
         }
 
         lap_completed, lap_time = self.lap_checker()
