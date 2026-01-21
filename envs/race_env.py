@@ -27,7 +27,7 @@ class RacingEnv(gym.Env):
         self.observation_space = spaces.Box(
             low=-np.inf,
             high=np.inf,
-            shape=(25, ),
+            shape=(21, ),
             dtype=np.float32
         )
 
@@ -195,18 +195,34 @@ class RacingEnv(gym.Env):
             self._update_cam_pos()
 
     def _get_obs(self):
-        pos, orn = p.getBasePositionAndOrientation(self.car.car_id)
-        vel, ang_vel = p.getBaseVelocity(self.car.car_id)
+        vel, _ = p.getBaseVelocity(self.car.car_id)
 
+        # [右前→左前]→[左前→左後ろ]．．．
         sensor = self.car.checkHit(self.obj_dict)
-        sensor_flat = np.concatenate(sensor)
+
+        front = sensor[0]
+        f_half = len(front) // 2
+
+        rear = sensor[3]
+        r_half = len(rear) // 2
+
+        l_f = sensor[0][f_half:]
+        l_m = sensor[1]
+        l_r = sensor[3][:r_half]
+        r_f = sensor[0][:f_half][::-1]
+        r_m = sensor[3][::-1]
+        r_r = sensor[2][r_half:][::-1]
+
+        sensor_left = np.array(l_f + l_m + l_r, dtype=np.float32)
+        sensor_right = np.array(r_f + r_m + r_r, dtype=np.float32)
 
         obs = np.concatenate([
              np.array(vel),
-             sensor_flat
+             sensor_left,
+             sensor_right,
         ])
 
-        return obs.astype(np.float32), sensor_flat, pos
+        return obs.astype(np.float32)
 
     def _accross_goal(self):
         pos, orn = p.getBasePositionAndOrientation(self.car.car_id)
@@ -279,9 +295,18 @@ class RacingEnv(gym.Env):
 
         return forward_world
 
-    def _calc_reward(self, obs, pos, action, sensor):
+    def _calc_reward(self, obs, action, pos):
         reward = 0.0
+
+        vel_dim = 3
+        sensor_dim = (len(obs) - vel_dim) // 2
+
+        sensor_left = obs[vel_dim:(vel_dim + sensor_dim)]
+        sensor_right = obs[(vel_dim+sensor_dim):(vel_dim + 2 * sensor_dim)]
+
         throttle, brake, steer = action
+        steer_dir = np.sign(steer)
+
         # コースの総点数の取得，進捗率用
         # course_length = len(self.center_point)
 
@@ -310,8 +335,24 @@ class RacingEnv(gym.Env):
         # コースに対するホイールの接地判定取得
         wheel_contacts = self.car.get_wheel_contact(self.track_id)
 
-        # センサー 前方，側方，後方 のランオフ率の取得
-        r_f, r_s, r_b = self.get_runoff_ratio(sensor)
+        # センサー 左右の危険度計算
+        danger_left = np.mean(sensor_left)
+        danger_right = np.mean(sensor_right)
+
+        # steerの方向で危険度の左右選択
+        if steer_dir > 0:
+            danger = danger_right
+        elif steer_dir < 0:
+            danger = danger_left
+        else:
+            danger = 0.5 * (danger_left + danger_right)
+
+        # 危険度を 0〜1 に整形
+        danger_level = np.tanh((danger - 0.45) * 5.0)
+        danger_level = np.clip(danger_level, 0.0, 1.0)
+
+        # センサーペナルティ
+        sensor_penalty = -danger_level * speed_scale * 2.5
 
         # 後ろを向いている・前向きでバックに対するペナルティ
         back_penalty = 0.0
@@ -327,20 +368,6 @@ class RacingEnv(gym.Env):
         for c in wheel_contacts:
             if not c:
                 wheel_contact_penalty -= forward_speed
-
-        # 前方重視の融合
-        fusion_sensor = (
-            r_f * 0.7 +
-            r_s * 0.2 +
-            r_b * 0.1
-        )
-
-        # 危険度（0〜1）
-        danger_level = np.tanh((fusion_sensor - 0.45) * 5.0)
-        danger_level = np.clip(danger_level, 0.0, 1.0)
-
-        # センサーペナルティ
-        sensor_penalty = - danger_level * speed_scale * 2.5
 
         # 少し先の方向ベクトルと最近のベクトルとの角度差
         tan_dot = np.dot(tangent_far, tangent_near)
@@ -372,14 +399,6 @@ class RacingEnv(gym.Env):
             + steer_penalty
             + sensor_penalty
         )
-
-        # print(
-        #     f"forward_speed: {forward_speed:.2f}  "
-        #     f"steer_penalty:{steer_penalty:.2f}  "
-        #     f"sensor_penalty:{sensor_penalty:.2f}  "
-        #     f"sim_time:{self.sim_time:.2f}  "
-        #     f"reward:{reward:.2f}"
-        # )
 
         if not np.isfinite(reward):
             print("reward invalid:", reward)
@@ -449,7 +468,7 @@ class RacingEnv(gym.Env):
         self.lap_started = False
         self.start_time = None
 
-        obs, _, _ = self._get_obs()
+        obs = self._get_obs()
 
         for i in range(50):
             p.stepSimulation()
@@ -460,10 +479,11 @@ class RacingEnv(gym.Env):
         # 中断・切り捨て用フラグ
         terminated = False
         truncated = False
-        info = {}
 
         # 車両の出力
         throttle, brake, steer = action
+
+        info = {}
 
         self.car.apply_action(
             throttle=throttle,
@@ -478,13 +498,14 @@ class RacingEnv(gym.Env):
         self.sim_time += self.time_step
         # print(f"hit_data : {self.car.checkHit(self.obj_dict)}")
 
-        obs, sensor, pos = self._get_obs()
+        obs = self._get_obs()
+        pos, _ = p.getBasePositionAndOrientation(self.car.car_id)
 
         if not np.all(np.isfinite(obs)):
             print("obs =", obs)
             raise RuntimeError("NaN in observation")
 
-        reward = self._calc_reward(obs, pos, action, sensor)
+        reward = self._calc_reward(obs, action, pos)
 
         lap_completed, lap_time = self.lap_checker()
 
