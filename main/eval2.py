@@ -12,7 +12,11 @@ PROJECT_ROOT = CURRENT_DIR.parent.parent
 
 
 def main():
-    car_pos = [config.CAR["base_x"], config.CAR["base_y"], config.CAR["base_z"]]
+    car_pos = [
+        config.CAR["base_x"],
+        config.CAR["base_y"],
+        config.CAR["base_z"]
+    ]
     car_orn = p.getQuaternionFromEuler([0, 0, 0])
 
     env = RacingEnv(car_pos, car_orn, render=True)
