@@ -368,13 +368,13 @@ class RacingEnv(gym.Env):
             + sensor_penalty
         )
 
-        print(
-            f"forward_speed: {forward_speed:.2f}  "
-            f"steer_penalty:{steer_penalty:.2f}  "
-            f"sensor_penalty:{sensor_penalty:.2f}  "
-            f"sim_time:{self.sim_time:.2f}  "
-            f"reward:{reward:.2f}"
-        )
+        # print(
+        #     f"forward_speed: {forward_speed:.2f}  "
+        #     f"steer_penalty:{steer_penalty:.2f}  "
+        #     f"sensor_penalty:{sensor_penalty:.2f}  "
+        #     f"sim_time:{self.sim_time:.2f}  "
+        #     f"reward:{reward:.2f}"
+        # )
 
         if not np.isfinite(reward):
             print("reward invalid:", reward)
