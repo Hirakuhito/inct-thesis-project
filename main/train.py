@@ -24,7 +24,9 @@ class RewardLoggerCallback(BaseCallback):
     def _on_step(self) -> bool:
         infos = self.locals.get("infos", [])
 
-        # VecEnv 対応（複数 env の平均）
+        # ==========
+        # reward 項目の平均
+        # ==========
         reward_dict = {}
 
         for info in infos:

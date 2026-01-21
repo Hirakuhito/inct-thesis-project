@@ -49,7 +49,6 @@ class RacingEnv(gym.Env):
         self.step_count = 0
         self.off_ground_count = 0
         self.lap_count = 0
-        self.total_lap_count = 0
         self.lap_times = []
 
         self.max_torque = config.CAR["max_torque"]
@@ -60,6 +59,13 @@ class RacingEnv(gym.Env):
         self.start_time = None
         self.goal_prev_inside = False
         self.left_start = False
+
+        # ログ表示用
+        self.total_episodes = 0
+        self.out_of_course_count = 0
+        self.timeout_count = 0
+        self.total_lap_count = 0
+        self.last_info = {}
         # *================================
 
         self._setup_env(car_pos, car_orn)
@@ -330,158 +336,96 @@ class RacingEnv(gym.Env):
         reward = 0.0
 
         # ======================
-        # 観測の分解
+        # 1. 観測の分解
         # ======================
         vel_dim = 3
         sensor_dim = (len(obs) - vel_dim) // 2
-
         sensor_left = obs[vel_dim:(vel_dim + sensor_dim)]
         sensor_right = obs[(vel_dim + sensor_dim):(vel_dim + 2 * sensor_dim)]
 
         throttle, brake, steer = action
-        steer_dir = np.sign(steer)
-        steer_abs = abs(steer)
-
-        car_vel = np.array(obs[:2])
+        car_vel = np.array(obs[:2]) # [vx, vy]
+        car_forward = self.get_car_dir()[:2] # 車体の向きベクトル
 
         # ======================
-        # コース情報
+        # 2. コース情報の取得
         # ======================
         nn_idx, nn_idx_next = self.get_nn_index(pos)
+        # コースの接線方向（進むべき方向）
         tangent_near = -np.array(self.track_normal_vec[nn_idx])
-        tangent_far = -np.array(self.track_normal_vec[nn_idx_next])
 
-        car_forward = self.get_car_dir()[:2]
-
+        # 車体の向きとコース接線の合致度 (1.0で完璧、-1.0で逆走)
         dot_near = np.dot(tangent_near, car_forward)
-        dot_far = np.dot(tangent_far,  car_forward)
 
-        forward_speed = np.dot(tangent_near, car_vel)
-        speed_scale = np.clip(forward_speed / 5.5, 0.0, 1.0)
-
-        # ======================
-        # コース曲率
-        # ======================
-        tan_dot = np.dot(tangent_near, tangent_far)
-        theta = np.arccos(np.clip(tan_dot, -1.0, 1.0))
-        curve_strength = np.clip(theta / self.course_theta_max, 0.0, 1.0)
+        # コース進行方向への速度成分
+        forward_speed = np.dot(car_vel, tangent_near)
 
         # ======================
-        # 前進報酬
+        # 3. 各報酬コンポーネントの計算
         # ======================
+
+        # --- A. 進行報酬 (Progress) ---
+        # 速度だけでなく、向きが合っている時のみ高い報酬を与える
         if forward_speed > 0:
-            forward_reward = (forward_speed ** 2) * (1 - curve_strength)
+            forward_reward = forward_speed * dot_near
         else:
-            forward_reward = 0.0
+            # 停止・後退・逆走へのペナルティ（「動かない」ことへの対策）
+            forward_reward = -0.5 
 
-        # ======================
-        #  バックペナルティ
-        # ======================
-        back_penalty = 0.0
-        if forward_speed < 0:
-            back_penalty = forward_speed * 5.0   # 強めに抑制
+        # --- B. 姿勢報酬 (Alignment) ---
+        # 速度に関わらず、コースの向きを向いていれば加点
+        # これにより、停止状態からでも「まず向きを変える」ことを学習する
+        alignment_reward = dot_near * 0.5
 
-        # ======================
-        #  向きズレペナルティ
-        # ======================
-        dir_error = (1 - dot_near) * 0.75 + (1 - dot_far) * 0.25
-        direction_penalty = -(
-            dir_error
-            * speed_scale
-            * (1 - curve_strength)
-            * 3.0
-        )
+        # --- C. センタリング報酬 (Centering) ---
+        # 左右のセンサー値の差を小さくし、中央維持を促す
+        danger_left = np.mean(sensor_left)
+        danger_right = np.mean(sensor_right)
+        centering_penalty = -abs(danger_left - danger_right) * 2.0
 
-        # ======================
-        #  正しいステア方向の報酬
-        # ======================
-        target_steer = curve_strength ** 0.5
-        steer_match = 1.0 - abs(target_steer - steer_abs)
-        steer_match = np.clip(steer_match, 0.0, 1.0)
+        # コース端への接近に対する急激なペナルティ
+        edge_penalty = 0.0
+        if max(danger_left, danger_right) > 0.8:
+            edge_penalty = -5.0
 
-        steer_reward = steer_match * speed_scale * 2.0
+        # --- D. 制御の滑らかさ (Smoothing) ---
+        # 無意味な蛇行や極端なハンドル切りを抑制
+        steer_penalty = -(steer ** 2) * 0.5
 
-        # ======================
-        # 正しい方向に切った報酬
-        # ======================
-        steer_dir_reward = 0.0
-        steer_dir_reward = 0.0
-        if (
-            curve_strength > 0.1
-            and forward_speed > 1.0
-            and dot_near > 0.5
-            and steer_dir != 0
-        ):
-            curve_dir = np.sign(np.cross(tangent_near, tangent_far))
-            if steer_dir == curve_dir:
-                steer_dir_reward = speed_scale * curve_strength * 2.0
-
-        # ======================
-        #  間違った方向切ったペナルティ
-        # ======================
-        steer_penalty = 0.0
-        if dot_near > 0 and steer_dir != 0:
-            # 曲がるべき方向と逆に切っている
-            curve_dir = np.sign(np.cross(tangent_near, tangent_far))
-            if steer_dir != curve_dir:
-                steer_penalty = -(
-                    steer_abs
-                    * speed_scale
-                    * (1.0 - curve_strength)
-                    * 3.0
-                )
-
-        # ======================
-        #  タイヤ接地ペナルティ
-        # ======================
+        # --- E. タイヤ接地 (Stability) ---
         wheel_contacts = self.car.get_wheel_contact(self.track_id)
         contact_penalty = 0.0
         for c in wheel_contacts:
             if not c:
-                contact_penalty -= speed_scale * 2.0
+                contact_penalty -= 2.0 # 脱輪への強い警告
+
+        # --- F. 生存報酬 (Survival) ---
+        # 毎ステップ少額を与えることで、コース上に留まる動機を作る
+        survival_reward = 0.2
 
         # ======================
-        # センサーペナルティ
-        # ======================
-        danger_left = np.mean(sensor_left)
-        danger_right = np.mean(sensor_right)
-
-        if steer_dir > 0:
-            danger = danger_right
-        elif steer_dir < 0:
-            danger = danger_left
-        else:
-            danger = 0.5 * (danger_left + danger_right)
-
-        danger_level = np.tanh((danger - 0.45) * 5.0)
-        danger_level = np.clip(danger_level, 0.0, 1.0)
-
-        sensor_penalty = -danger_level * speed_scale * 5.0
-
-        # ======================
-        # 総和
+        # 4. 総和と情報の格納
         # ======================
         reward = (
             forward_reward
-            + back_penalty
-            + direction_penalty
-            + steer_reward
-            + steer_dir_reward
+            + alignment_reward
+            + centering_penalty
+            + edge_penalty
             + steer_penalty
             + contact_penalty
-            + sensor_penalty
+            + survival_reward
         )
 
         info = {
+            "reward_total": reward,
             "forward": forward_reward,
-            "back": back_penalty,
-            "direction": direction_penalty,
-            "steer": steer_reward,
-            "steer_dir": steer_dir_reward,
+            "alignment": alignment_reward,
+            "centering": centering_penalty,
+            "edge": edge_penalty,
             "steer_penalty": steer_penalty,
             "contact": contact_penalty,
-            "sensor": sensor_penalty,
-            "curve": curve_strength,
+            "survival": survival_reward,
+            "dot_near": dot_near
         }
 
         return reward, info
@@ -525,6 +469,18 @@ class RacingEnv(gym.Env):
         return lap_completed, lap_time
 
     def reset(self, seed=None, options=None):
+        if hasattr(self, "last_info"):
+            self.total_episodes += 1
+
+            if self.last_info.get("termination") == "out_of_course":
+                self.out_of_course_count += 1
+            elif self.last_info.get("termination") == "lap_completed":
+                self.total_lap_count += 1
+            elif self.last_info.get("truncate") == "timeout":
+                self.timeout_count += 1
+
+        self.last_info = {}
+
         init_pos = [
             config.CAR["base_x"],
             config.CAR["base_y"],
@@ -618,13 +574,16 @@ class RacingEnv(gym.Env):
         if terminated:
             if course_out:
                 reward -= 10.0
+                info["termination"] = "out_of_course"
                 print("# terminated with course out.")
             if lap_completed:
                 reward += 50.0
+                info["termination"] = "lap_completed"
                 print("# terminated with Lap completed.")
 
         if self.sim_time >= self.max_time:
             truncated = True
+            info["truncate"] = "timeout"
             print("# truncated")
 
         if self.render:
@@ -632,6 +591,8 @@ class RacingEnv(gym.Env):
                 # print(f"sim time: {self.sim_time:2.2f}")
                 self._update_cam_pos()
                 # self.car.draw_car_info(throttle, brake, steer)
+
+        self.last_info = info
 
         return obs, reward, terminated, truncated, info
 

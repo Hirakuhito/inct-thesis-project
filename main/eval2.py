@@ -30,7 +30,7 @@ def main():
 
         if done:
             obs, _ = env.reset()
-        time.sleep(1. / 240.)
+        time.sleep(1000)
 
     env.close()
 
