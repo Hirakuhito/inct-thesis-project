@@ -305,6 +305,7 @@ class RacingEnv(gym.Env):
 
         # コース前方に対する車両の速度の計算
         forward_speed = np.dot(tangent_near, car_vel)
+        speed_scale = np.clip(forward_speed / 5.5, 0.0, 1.0)
 
         # コースに対するホイールの接地判定取得
         wheel_contacts = self.car.get_wheel_contact(self.track_id)
@@ -330,7 +331,12 @@ class RacingEnv(gym.Env):
 
         # ランオフ検出率に対するペナルティ
         fusion_sensor = (r_f * 0.6 + r_s * 0.3 + r_b * 0.1)
-        sensor_penalty = - np.tanh(fusion_sensor) * 3
+        if fusion_sensor < 0.1:
+            sensor_penalty = 0.0
+        sensor_penalty = (
+            -np.tanh(fusion_sensor) * max(speed_scale - 0.3, 0.0)
+            * 3.0
+        )
 
         # 少し先の方向ベクトルと最近のベクトルとの角度差
         tan_dot = np.dot(tangent_far, tangent_near)
@@ -342,8 +348,6 @@ class RacingEnv(gym.Env):
         target_steer = curve_strength ** 0.5
         mismatch = - abs(target_steer - steer_norm) ** 2
         # excess = -max(steer_norm - curve_strength, 0.0) ** 2
-
-        speed_scale = np.clip(forward_speed / 5.5, 0.0, 1.0)
 
         # コースの曲率に対するステアリング量のペナルティ
         steer_penalty = mismatch * speed_scale * 2.0
