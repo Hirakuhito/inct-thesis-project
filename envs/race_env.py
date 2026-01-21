@@ -50,6 +50,7 @@ class RacingEnv(gym.Env):
         self.off_ground_count = 0
         self.lap_count = 0
         self.total_lap_count = 0
+        self.lap_times = []
 
         self.max_torque = config.CAR["max_torque"]
         self.max_brake_force = config.CAR["max_brake_force"]
@@ -325,7 +326,7 @@ class RacingEnv(gym.Env):
         wheel_contact_penalty = 0.0
         for c in wheel_contacts:
             if not c:
-                wheel_contact_penalty -= forward_speed * 3.0
+                wheel_contact_penalty -= forward_speed
 
         # ランオフ検出率に対するペナルティ
         fusion_sensor = (r_f * 0.6 + r_s * 0.3 + r_b * 0.1)
@@ -342,8 +343,10 @@ class RacingEnv(gym.Env):
         mismatch = - abs(target_steer - steer_norm) ** 2
         # excess = -max(steer_norm - curve_strength, 0.0) ** 2
 
+        speed_scale = np.clip(forward_speed / 20.0, 0.0, 1.0)
+
         # コースの曲率に対するステアリング量のペナルティ
-        steer_penalty = mismatch
+        steer_penalty = mismatch * speed_scale * 2.0
 
         # スピードに対する報酬
         forward_speed_reward = 0.0
@@ -355,7 +358,15 @@ class RacingEnv(gym.Env):
         reward = (
             forward_speed_reward
             + dir_penalty
+            + back_penalty
+            + wheel_contact_penalty
+            + steer_penalty
         )
+
+        # print(
+        #     f"forward_speed_reward: {forward_speed_reward:.2f}  "
+        #     f"steer_penalty:{steer_penalty:.2f}"
+        # )
 
         if not np.isfinite(reward):
             print("reward invalid:", reward)
@@ -422,7 +433,6 @@ class RacingEnv(gym.Env):
         self.left_start = False
         self.lap_count = 0
 
-        self.lap_times = []
         self.lap_started = False
         self.start_time = None
 
@@ -466,7 +476,6 @@ class RacingEnv(gym.Env):
         lap_completed, lap_time = self.lap_checker()
 
         if lap_completed:
-            reward += 100.0
             print(f"# {self.total_lap_count} lap completed !")
 
             if self.render and lap_time is not None:
@@ -485,10 +494,11 @@ class RacingEnv(gym.Env):
         terminated = course_out or lap_completed
 
         if terminated:
-            # reward -= 50.0
             if course_out:
+                reward -= 1.0
                 print("# terminated with course out.")
             if lap_completed:
+                reward += 10.0
                 print("# terminated with Lap completed.")
 
         if self.sim_time >= self.max_time:
