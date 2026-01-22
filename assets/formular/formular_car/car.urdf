@@ -11,7 +11,8 @@
     <link name="body">
         <inertial>
             <mass value="800.0"/>
-            <inertia ixx="1.0" ixy="0.0" ixz="0.0" iyy="1.0" iyz="0.0" izz="1.0"/>
+            <origin xyz="0 0.1 -0.05" rpy="0 0 0"/>
+            <inertia ixx="1570" ixy="0.0" ixz="0.0" iyy="230" iyz="0.0" izz="1600"/>
         </inertial>
         <visual>
             <geometry>
@@ -59,7 +60,7 @@
     <link name="wheel_fl">
         <inertial>
             <mass value="10.0"/>
-            <inertia ixx="0.2" iyy="0.5" izz="0.5"/>
+            <inertia ixx="1.25" ixy="0.0" ixz="0.0" iyy="0.794" iyz="0.0" izz="0.794"/>
         </inertial>
         <visual>
             <geometry>
@@ -77,7 +78,7 @@
     <link name="wheel_fr">
         <inertial>
             <mass value="10.0"/>
-            <inertia ixx="0.2" iyy="0.5" izz="0.5"/>
+            <inertia ixx="1.25" ixy="0.0" ixz="0.0" iyy="0.794" iyz="0.0" izz="0.794"/>
         </inertial>
         <visual>
             <geometry>
@@ -95,7 +96,7 @@
     <link name="wheel_rl">
         <inertial>
             <mass value="10.0"/>
-            <inertia ixx="0.2" iyy="0.5" izz="0.5"/>
+            <inertia ixx="1.25" ixy="0.0" ixz="0.0" iyy="0.794" iyz="0.0" izz="0.794"/>
         </inertial>
         <visual>
             <geometry>
@@ -113,7 +114,7 @@
     <link name="wheel_rr">
         <inertial>
             <mass value="10.0"/>
-            <inertia ixx="0.2" iyy="0.5" izz="0.5"/>
+            <inertia ixx="1.25" ixy="0.0" ixz="0.0" iyy="0.794" iyz="0.0" izz="0.794"/>
         </inertial>
         <visual>
             <geometry>
@@ -146,6 +147,7 @@
         <parent link="steering_fl"/>
         <child link="wheel_fl"/>
         <axis xyz="1.0 0.0 0.0"/>
+        <dynamics damping="0.1" friction="0.05"/>
     </joint>
 
     <!-- ========================= -->
@@ -165,6 +167,7 @@
         <parent link="steering_fr"/>
         <child link="wheel_fr"/>
         <axis xyz="1.0 0.0 0.0"/>
+        <dynamics damping="0.1" friction="0.05"/>
     </joint>
 
     <!-- ======================= -->
@@ -182,6 +185,7 @@
         <parent link="steering_rl"/>
         <child link="wheel_rl"/>
         <axis xyz="1.0 0.0 0.0"/>
+        <dynamics damping="0.1" friction="0.05"/>
     </joint>
 
     <!-- ======================== -->
@@ -199,5 +203,6 @@
         <parent link="steering_rr"/>
         <child link="wheel_rr"/>
         <axis xyz="1.0 0.0 0.0"/>
+        <dynamics damping="0.1" friction="0.05"/>
     </joint>
 </robot>

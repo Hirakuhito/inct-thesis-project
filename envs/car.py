@@ -25,15 +25,15 @@ class Car:
 
         self.sensor_f = {
             "origin": np.array([0.0, 0.5, 0.0]),
-            "base_direction": np.array([0.0, 1.0, -0.05]),
-            "length": 1.0,
+            "base_direction": np.array([0.0, 10.0, -0.8]),
+            "length": 2.0,
             "fov": np.deg2rad(120),
             "num_rays": 8
         }
 
         self.sensor_r = {
             "origin": np.array([0.2, 0.0, 0.0]),
-            "base_direction": np.array([0.5, 0.0, -0.05]),
+            "base_direction": np.array([0.5, 0.0, -0.07]),
             "length": 1.0,
             "fov": np.deg2rad(60),
             "num_rays": 3
@@ -41,7 +41,7 @@ class Car:
 
         self.sensor_l = {
             "origin": np.array([-0.2, 0.0, 0.0]),
-            "base_direction": np.array([-0.5, 0.0, -0.05]),
+            "base_direction": np.array([-0.5, 0.0, -0.07]),
             "length": 1.0,
             "fov": np.deg2rad(60),
             "num_rays": 3
